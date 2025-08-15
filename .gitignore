@@ -274,3 +274,32 @@ output/
 /target
 /models
 talking.log
+
+# CUDA test executables
+tests/cuda_device_query
+tests/cuda_bandwidth_test
+tests/*.o
+tests/*.exe
+
+# Model files
+*.pth
+*.ckpt
+*.safetensors
+*.bin
+
+# Output directories
+outputs/
+results/
+checkpoints/
+logs/
+
+# VS Code
+.vscode/
+
+# Temporary files
+*.tmp
+*.swp
+*~
+
+# docs build
+docs/build/

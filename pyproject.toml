@@ -1,24 +1,74 @@
 [tool.poetry]
-name = "your_package_name"
-version = "0.0.1"
-description = "A short description of your package."
+name = "dream-cad"
+version = "0.1.0"
+description = "MVDream text-to-3D generation on Manjaro with RTX 3090"
 authors = ["C. Thomas Brittain <cthomasbrittain@hotmail.com>"]
 license = "MIT"
 readme = "README.md"
+packages = [{include = "mvdream", from = "."}]
 
 [tool.poetry.urls]
-homepage = "https://github.com/Ladvien/your_package_name"
-repository = "https://github.com/Ladvien/your_package_name"
-documentation = "https://your_package_name.readthedocs.io/en/latest/"
-
+homepage = "https://github.com/Ladvien/dream-cad"
+repository = "https://github.com/Ladvien/dream-cad"
+documentation = "https://dream-cad.readthedocs.io/en/latest/"
 
 [tool.poetry.dependencies]
-python = ">=3.10"
+python = "^3.10"
+# PyTorch - installed via pip directly due to Python 3.13
+# torch = "2.7.1+cu118"
+# torchvision = "0.22.1+cu118"
+# torchaudio = "2.7.1+cu118"
+numpy = "^1.24.0"
+pillow = "^10.0.0"
 pyyaml = "^6.0.2"
 rich = "^13.9.4"
 
+# MVDream core dependencies
+pytorch-lightning = "2.0.9"
+diffusers = "^0.21.0"
+transformers = "^4.27.1"
+accelerate = "^0.24.0"
+open-clip-torch = "2.7.0"
+omegaconf = "2.3.0"
+einops = "^0.7.0"
+
+# Image/video processing
+opencv-python = "^4.8.0"
+imageio = "^2.31.0"
+imageio-ffmpeg = "^0.4.9"
+matplotlib = "^3.7.0"
+
+# UI and monitoring
+gradio = "^3.13.2"
+tensorboard = "^2.14.0"
+wandb = "^0.15.0"
+
+# Additional ML libraries
+jaxtyping = "^0.2.0"
+typeguard = "^4.0.0"
+kornia = "^0.7.0"
+sentencepiece = "^0.1.99"
+safetensors = "^0.4.0"
+huggingface-hub = "^0.19.0"
+
+# 3D processing
+trimesh = {extras = ["easy"], version = "^4.0.0"}
+networkx = "^3.1"
+pysdf = "^0.1.9"
+PyMCubes = "^0.1.4"
+
+[[tool.poetry.source]]
+name = "pytorch-cu118"
+url = "https://download.pytorch.org/whl/cu118"
+priority = "explicit"
+
 [tool.poetry.group.dev.dependencies]
 black = "^25.1.0"
+ruff = "^0.8.0"
+bandit = {extras = ["toml"], version = "^1.7.0"}
+poethepoet = "^0.29.0"
+pytest = "^8.0.0"
+pytest-cov = "^5.0.0"
 sphinx = "^8.1.3"
 myst-parser = "^4.0.1"
 sphinx-autobuild = "^2024.10.3"
@@ -26,15 +76,82 @@ furo = "^2024.8.6"
 sphinx-autoapi = "^3.5.0"
 sphinx-autodoc2 = "^0.5.0"
 doc-utils = "^0.0.2"
-poethepoet = "^0.32.2"
 
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = [
+    "E",  # pycodestyle errors
+    "W",  # pycodestyle warnings
+    "F",  # pyflakes
+    "I",  # isort
+    "B",  # flake8-bugbear
+    "UP", # pyupgrade
+]
+ignore = ["E501"]  # line too long, handled by formatter
+
+[tool.bandit]
+skips = ["B101"]  # Skip assert_used test
+
 [tool.poe.tasks]
-docs         = "sphinx-build docs/source docs/build/html" # a simple command task
-docs_view    = "sphinx-autobuild docs/source docs/build/html" # a simple command task
-patch        = "poetry version patch" # a simple command task
-_publish      = "poetry publish --build" # a simple command task
-release = ["docs", "patch", "_publish"] # a task that depends on other tasks
+# Documentation tasks
+docs = "sphinx-build docs/source docs/build/html"
+docs_view = "sphinx-autobuild docs/source docs/build/html"
+
+# Testing tasks
+test = "pytest tests/ -v"
+test-gpu = "pytest tests/test_cuda.py -v"
+test-story = "pytest tests/test_story*.py -v"
+test-all = ["test", "test-gpu"]
+
+# Linting and formatting
+lint = ["ruff-check", "bandit-check"]
+ruff-check = "ruff check ."
+ruff-fix = "ruff check . --fix"
+bandit-check = "bandit -r mvdream scripts -ll"
+format = "ruff format ."
+format-check = "ruff format . --check"
+
+# Code quality
+quality = ["format", "lint", "test"]
+fix = ["format", "ruff-fix"]
+
+# MVDream tasks
+generate = {shell = "python scripts/generate.py", help = "Generate 3D model from text prompt"}
+generate-3d = {shell = "python scripts/generate_3d.py", help = "Generate 3D mesh from text prompt"}
+generate-3d-web = {shell = "python scripts/generate_3d.py --web", help = "Launch 3D generation web interface"}
+download-models = {shell = "python scripts/download_models.py", help = "Download MVDream pre-trained models"}
+verify-models = {shell = "python scripts/download_models.py --verify-only", help = "Verify downloaded model integrity"}
+test-model-loading = {shell = "python scripts/test_model_loading.py", help = "Test loading MVDream models"}
+diagnose = {shell = "python scripts/diagnose.py", help = "Run comprehensive system diagnostics"}
+benchmark = {shell = "python scripts/benchmark.py", help = "Run performance benchmarks"}
+benchmark-quick = {shell = "python scripts/benchmark.py --quick", help = "Run quick performance benchmark"}
+monitor = {shell = "python scripts/production_monitor.py monitor", help = "Real-time GPU monitoring"}
+prod-start = {shell = "python scripts/production_monitor.py start", help = "Start production manager"}
+prod-status = {shell = "python scripts/production_monitor.py status", help = "Show system status"}
+queue-add = {shell = "python scripts/production_monitor.py queue add", help = "Add job to queue"}
+queue-list = {shell = "python scripts/production_monitor.py queue list", help = "List queue jobs"}
+test-2d = {shell = "python scripts/test_2d_generation.py --test-mode", help = "Test 2D multi-view generation"}
+test-2d-real = {shell = "python scripts/test_2d_generation.py", help = "Test 2D generation with real model"}
+test-3d = {shell = "python scripts/generate_3d.py 'a ceramic coffee mug' --test-mode", help = "Test 3D generation pipeline"}
+
+# Development tasks
+clean = """
+find . -type f -name '*.py[co]' -delete
+find . -type d -name '__pycache__' -delete
+find . -type d -name '.pytest_cache' -exec rm -rf {} +
+find . -type d -name '.ruff_cache' -exec rm -rf {} +
+"""
+setup = ["install", "test-gpu"]
+install = "poetry install --with dev"
+
+# Release tasks
+patch = "poetry version patch"
+_publish = "poetry publish --build"
+release = ["quality", "docs", "patch", "_publish"]

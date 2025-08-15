@@ -1,0 +1,6 @@
+[submodule "extern/MVDream"]
+	path = extern/MVDream
+	url = https://github.com/bytedance/MVDream.git
+[submodule "extern/MVDream-threestudio"]
+	path = extern/MVDream-threestudio
+	url = https://github.com/bytedance/MVDream-threestudio.git

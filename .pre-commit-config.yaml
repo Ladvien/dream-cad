@@ -1,0 +1,90 @@
+# Pre-commit hooks configuration
+# See https://pre-commit.com for more information
+
+default_language_version:
+  python: python3.10
+
+repos:
+  # General file checks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: check-yaml
+        exclude: ^extern/
+      - id: check-toml
+      - id: check-json
+      - id: check-added-large-files
+        args: ['--maxkb=1000']
+        exclude: '(\.ipynb|\.pth|\.ckpt|\.safetensors|\.bin)$'
+      - id: check-case-conflict
+      - id: check-merge-conflict
+      - id: check-symlinks
+      - id: check-executables-have-shebangs
+      - id: debug-statements
+      - id: detect-private-key
+      - id: end-of-file-fixer
+        exclude: ^extern/
+      - id: mixed-line-ending
+        args: ['--fix=lf']
+      - id: trailing-whitespace
+        exclude: ^extern/
+      - id: fix-byte-order-marker
+      - id: check-docstring-first
+      
+  # Python code formatting with Ruff
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.1.6
+    hooks:
+      # Run the formatter
+      - id: ruff-format
+        exclude: ^extern/
+      # Run the linter
+      - id: ruff
+        args: [--fix, --exit-non-zero-on-fix]
+        exclude: ^extern/
+  
+  # Security checks with Bandit
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.7.5
+    hooks:
+      - id: bandit
+        args: ['-c', '.bandit', '-ll']
+        exclude: ^(tests/|extern/)
+  
+  # Check for secrets
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.4.0
+    hooks:
+      - id: detect-secrets
+        args: ['--baseline', '.secrets.baseline']
+        exclude: ^(poetry\.lock|extern/)
+  
+  # Markdown linting
+  - repo: https://github.com/igorshubovych/markdownlint-cli
+    rev: v0.37.0
+    hooks:
+      - id: markdownlint
+        args: ['--fix']
+        exclude: ^extern/
+  
+  # YAML linting
+  - repo: https://github.com/adrienverge/yamllint
+    rev: v1.33.0
+    hooks:
+      - id: yamllint
+        args: ['-d', 'relaxed']
+        exclude: ^extern/
+  
+  # Type checking with mypy (optional, commented out by default)
+  # - repo: https://github.com/pre-commit/mirrors-mypy
+  #   rev: v1.7.1
+  #   hooks:
+  #     - id: mypy
+  #       additional_dependencies: [types-all]
+  #       exclude: ^extern/
+
+# Configuration for CI
+ci:
+  autofix_prs: false
+  autoupdate_schedule: weekly
+  autoupdate_commit_msg: 'chore: update pre-commit hooks'

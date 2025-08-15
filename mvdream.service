@@ -1,0 +1,24 @@
+[Unit]
+Description=MVDream Production Manager
+After=network.target
+
+[Service]
+Type=simple
+User=%i
+WorkingDirectory=/mnt/datadrive_m2/dream-cad
+Environment="PATH=/mnt/datadrive_m2/dream-cad/.venv/bin:/usr/bin:/usr/local/bin"
+Environment="PYTHONPATH=/mnt/datadrive_m2/dream-cad"
+ExecStart=/mnt/datadrive_m2/dream-cad/.venv/bin/python scripts/production_monitor.py start
+Restart=always
+RestartSec=10
+StandardOutput=append:/mnt/datadrive_m2/dream-cad/logs/systemd.log
+StandardError=append:/mnt/datadrive_m2/dream-cad/logs/systemd.error.log
+
+# Security settings
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/mnt/datadrive_m2/dream-cad
+
+[Install]
+WantedBy=multi-user.target

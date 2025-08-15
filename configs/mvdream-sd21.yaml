@@ -1,0 +1,107 @@
+# MVDream 3D Generation Configuration
+# Optimized for RTX 3090 (24GB VRAM) on Manjaro Linux
+
+# Model Configuration
+model:
+  name: "MVDream"
+  base_model: "sd-v2.1-base-4view"
+  model_path: "/mnt/datadrive_m2/dream-cad/models/sd-v2.1-base-4view.pt"
+  device: "cuda"
+  precision: "fp16"  # Use fp16 for memory efficiency
+  rescale_factor: 0.5  # Optimized based on benchmarks
+  enable_xformers: true  # Enable if available
+  enable_memory_efficient_attention: true
+  gradient_checkpointing: false  # Not needed for batch_size=2
+  compile_model: true  # PyTorch 2.0+ optimization
+  
+# Generation Settings
+generation:
+  # Image generation parameters
+  num_views: 4
+  image_resolution: 512  # Increased based on benchmark results
+  guidance_scale: 7.5
+  num_inference_steps: 30  # Optimized for speed vs quality
+  
+  # 3D reconstruction parameters
+  mesh_resolution: 128
+  mesh_threshold: 0.0
+  smooth_mesh: true
+  
+  # Memory optimization
+  enable_attention_slicing: true
+  enable_vae_slicing: true
+  enable_cpu_offload: false  # Keep on GPU for RTX 3090
+  fp16: true  # Enable mixed precision
+  timestep_annealing: true
+  annealing_eta: 0.8
+  
+  # Batch processing
+  batch_size: 2  # Optimized for RTX 3090 24GB
+  gradient_accumulation_steps: 1
+  
+# Output Configuration
+output:
+  base_dir: "/mnt/datadrive_m2/dream-cad/outputs"
+  save_images: true
+  save_mesh: true
+  mesh_format: "obj"  # Options: obj, ply, stl
+  texture_format: "png"
+  save_intermediate: false  # Save memory by not storing intermediates
+  
+# Hardware Optimization
+hardware:
+  gpu_id: 0
+  num_workers: 4
+  pin_memory: true
+  
+  # Memory limits
+  max_vram_gb: 20  # Leave 4GB buffer on 24GB card
+  
+  # Temperature monitoring
+  max_gpu_temp_c: 83
+  temp_check_interval_s: 30
+  throttle_on_high_temp: true
+  
+# Web Interface
+interface:
+  enable_gradio: true
+  host: "localhost"
+  port: 7860
+  share: false
+  debug: false
+  
+# Logging
+logging:
+  level: "INFO"  # DEBUG, INFO, WARNING, ERROR
+  log_dir: "/mnt/datadrive_m2/dream-cad/logs"
+  save_metrics: true
+  metrics_file: "generation_metrics.json"
+  
+# Advanced Settings
+advanced:
+  seed: 42
+  deterministic: true
+  
+  # Safety settings
+  nsfw_filter: false  # Disable for local use
+  watermark: false
+  
+  # Cache settings
+  cache_dir: "/mnt/datadrive_m2/.cache/mvdream"
+  clear_cache_on_start: false
+  
+# Test Mode Configuration
+test_mode:
+  enabled: false
+  mock_generation: false
+  fast_mode: false  # Skip some steps for testing
+  test_prompt: "a ceramic coffee mug"
+  max_generation_time_minutes: 150
+
+# Performance Notes (from benchmarking)
+performance_notes:
+  optimized_for: "NVIDIA RTX 3090 24GB"
+  benchmark_date: "2025-08-15"
+  expected_generation_time: "45-90 minutes"
+  expected_vram_usage: "16 GB"
+  benchmark_results_file: "benchmarks/rtx3090_results.json"

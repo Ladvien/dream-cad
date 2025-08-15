@@ -1,0 +1,29 @@
+# MVDream System Requirements
+
+## Hardware Requirements
+# - NVIDIA GPU with 24GB+ VRAM (RTX 3090/4090, A5000, etc.)
+# - Minimum 32GB System RAM
+# - Minimum 50GB free disk space
+# - Power supply ≥750W for RTX 3090
+
+## Software Requirements
+# - NVIDIA Driver Version: 470.x or newer (current: 575.64.03)
+# - CUDA Toolkit: 11.8
+# - Python: 3.10 or 3.11
+
+## Python Dependencies (will be managed via Poetry)
+# Core ML Libraries
+torch>=2.0.0  # PyTorch with CUDA 11.8 support
+torchvision>=0.15.0
+xformers  # Memory-efficient attention
+pytorch-lightning==2.0.9
+diffusers
+transformers
+
+# Build Tools
+ninja  # For CUDA compilation
+
+# Development Tools
+ruff  # Linting
+bandit  # Security scanning
+poethepoet  # Task automation

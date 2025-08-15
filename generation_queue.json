@@ -1,0 +1,16 @@
+{
+  "jobs": [
+    {
+      "id": "job_20250815_123502_0",
+      "prompt": "test ceramic mug",
+      "config": {},
+      "status": "pending",
+      "created_at": "2025-08-15T12:35:02.586056",
+      "started_at": null,
+      "completed_at": null,
+      "error_message": null,
+      "output_path": null,
+      "checkpoint_path": null
+    }
+  ]
+}
