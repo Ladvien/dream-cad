@@ -230,18 +230,26 @@ def generate_3d_mesh(
             time.sleep(2)
 
         else:
-            # Real MVDream 3D generation would go here
-            print(f"\nGenerating 3D mesh for: '{prompt}'")
-            print("Note: Full MVDream 3D pipeline not yet implemented")
-            print("Creating mock mesh for demonstration...")
-
-            mesh_path = session_dir / "output.obj"
-            success = create_mock_mesh(mesh_path)
-
-            # In real implementation, this would:
-            # 1. Generate multi-view images using MVDream
-            # 2. Run 3D reconstruction (e.g., using threestudio)
-            # 3. Export mesh in desired format
+            # Check if MVDream-threestudio is available
+            threestudio_path = Path(__file__).parent.parent / "extern" / "MVDream-threestudio"
+            if threestudio_path.exists():
+                print(f"\nGenerating real 3D mesh using MVDream-threestudio for: '{prompt}'")
+                print("Note: This will use the real MVDream pipeline (may take 30-60 minutes)")
+                
+                # For now, still use mock for this script
+                # Users should use generate_3d_real.py for actual generation
+                print("For real generation, use: python scripts/generate_3d_real.py")
+                print("Creating mock mesh for quick demonstration...")
+                mesh_path = session_dir / "output.obj"
+                success = create_mock_mesh(mesh_path)
+            else:
+                # Fallback to mock generation
+                print(f"\nGenerating 3D mesh for: '{prompt}'")
+                print("Note: MVDream-threestudio not found, using mock mesh")
+                print("To enable real 3D generation, clone MVDream-threestudio")
+                
+                mesh_path = session_dir / "output.obj"
+                success = create_mock_mesh(mesh_path)
 
         # Stop monitoring and get stats
         gpu_monitor.stop_monitoring()

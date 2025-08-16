@@ -221,6 +221,8 @@ class DependencyCheck(DiagnosticCheck):
                 import_name = "PIL"
             elif package == "pytorch-lightning":
                 import_name = "pytorch_lightning"
+            elif package == "pyyaml":
+                import_name = "yaml"
                 
             try:
                 module = __import__(import_name)

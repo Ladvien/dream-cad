@@ -123,13 +123,18 @@ quality = ["format", "lint", "test"]
 fix = ["format", "ruff-fix"]
 
 # MVDream tasks
-generate = {shell = "python scripts/generate.py", help = "Generate 3D model from text prompt"}
-generate-3d = {shell = "python scripts/generate_3d.py", help = "Generate 3D mesh from text prompt"}
+generate = {cmd = "python scripts/generate.py", help = "Generate 3D model from text prompt (interactive)"}
+generate-3d = {cmd = "python scripts/generate_3d.py", help = "Generate 3D mesh from text prompt (mock/placeholder)"}
+generate-3d-real = {cmd = "python scripts/generate_3d_real.py", help = "Generate real 3D mesh using MVDream-threestudio (30-60 min)"}
+generate-3d-clean = {cmd = "python scripts/generate_3d_clean.py", help = "Generate 3D mesh with clean output (no warnings)"}
+generate-3d-quick = {cmd = "python scripts/generate_3d_real.py --quick", help = "Quick 3D generation with 1000 steps (10-15 min)"}
+generate-3d-test = {cmd = "python scripts/generate_3d_real.py --test-mode", help = "Test 3D generation with minimal steps"}
 generate-3d-web = {shell = "python scripts/generate_3d.py --web", help = "Launch 3D generation web interface"}
+generate-mvdream = {cmd = "python scripts/generate_mvdream.py", help = "Generate multi-view images using real MVDream model (pass prompt as argument)"}
 download-models = {shell = "python scripts/download_models.py", help = "Download MVDream pre-trained models"}
 verify-models = {shell = "python scripts/download_models.py --verify-only", help = "Verify downloaded model integrity"}
 test-model-loading = {shell = "python scripts/test_model_loading.py", help = "Test loading MVDream models"}
-diagnose = {shell = "python scripts/diagnose.py", help = "Run comprehensive system diagnostics"}
+diagnose = {cmd = "python scripts/diagnose.py", help = "Run comprehensive system diagnostics"}
 benchmark = {shell = "python scripts/benchmark.py", help = "Run performance benchmarks"}
 benchmark-quick = {shell = "python scripts/benchmark.py --quick", help = "Run quick performance benchmark"}
 monitor = {shell = "python scripts/production_monitor.py monitor", help = "Real-time GPU monitoring"}
@@ -142,12 +147,7 @@ test-2d-real = {shell = "python scripts/test_2d_generation.py", help = "Test 2D 
 test-3d = {shell = "python scripts/generate_3d.py 'a ceramic coffee mug' --test-mode", help = "Test 3D generation pipeline"}
 
 # Development tasks
-clean = """
-find . -type f -name '*.py[co]' -delete
-find . -type d -name '__pycache__' -delete
-find . -type d -name '.pytest_cache' -exec rm -rf {} +
-find . -type d -name '.ruff_cache' -exec rm -rf {} +
-"""
+clean = {shell = "find . -type f -name '*.py[co]' -delete && find . -type d -name '__pycache__' -delete && find . -type d -name '.pytest_cache' -exec rm -rf {} + && find . -type d -name '.ruff_cache' -exec rm -rf {} +", help = "Clean cache and temporary files"}
 setup = ["install", "test-gpu"]
 install = "poetry install --with dev"
 

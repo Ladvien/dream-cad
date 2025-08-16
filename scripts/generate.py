@@ -70,19 +70,23 @@ def main():
     print(f"Seed: {args.seed}")
     print(f"Device: {args.device}")
 
-    # Redirect to the 3D generation script
-    print("\nRedirecting to 3D generation pipeline...")
+    # Redirect to the MVDream generation script
+    print("\nRedirecting to MVDream generation pipeline...")
     import subprocess  # noqa: PLC0415
+    
+    # Use relative path
+    script_dir = Path(__file__).parent
+    mvdream_script = script_dir / "generate_mvdream.py"
+    
     cmd = [
         sys.executable,
-        "/mnt/datadrive_m2/dream-cad/scripts/generate_3d.py",
+        str(mvdream_script),
         args.prompt,
-        "--test-mode"  # Remove this when real generation is ready
+        "--steps", str(args.num_inference_steps)
     ]
+    
     result = subprocess.run(cmd)
     return result.returncode
-
-    return 0
 
 
 if __name__ == "__main__":
