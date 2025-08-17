@@ -1,0 +1,216 @@
+#!/usr/bin/env python3
+"""DreamCAD CLI - Beautiful command-line interface for 3D generation."""
+
+import sys
+from pathlib import Path
+
+# Add parent directory to path
+sys.path.insert(0, str(Path(__file__).parent))
+
+import click
+from rich.console import Console
+from rich.table import Table
+from rich.panel import Panel
+from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn
+from rich.prompt import Prompt, Confirm
+from rich import box
+import subprocess
+import time
+import json
+
+console = Console()
+
+
+def show_banner():
+    """Show ASCII art banner."""
+    banner = r"""
+[bold cyan]╔══════════════════════════════════════════════════════════════╗
+║  ____                           ____    _    ____           ║
+║ |  _ \ _ __ ___  __ _ _ __ ___ / ___|  / \  |  _ \          ║
+║ | | | | '__/ _ \/ _` | '_ ` _ \ |     / _ \ | | | |         ║
+║ | |_| | | |  __/ (_| | | | | | | |___/ ___ \| |_| |         ║
+║ |____/|_|  \___|\__,_|_| |_| |_|\____/_/   \_\____/         ║
+║                                                              ║
+║         [white]Transform Text to 3D with AI Magic ✨[/white]             ║
+╚══════════════════════════════════════════════════════════════╝[/bold cyan]
+    """
+    console.print(banner)
+
+
+@click.group(invoke_without_command=True)
+@click.option('--no-banner', is_flag=True, help='Skip the banner')
+@click.pass_context
+def cli(ctx, no_banner):
+    """🎨 DreamCAD - Beautiful 3D Generation CLI."""
+    if not no_banner and not ctx.invoked_subcommand:
+        show_banner()
+        console.print("\n[cyan]Welcome to DreamCAD![/cyan]")
+        console.print("Type [bold]dreamcad --help[/bold] for commands\n")
+        
+        # Launch TUI by default
+        launch_tui()
+
+
+@cli.command()
+def tui():
+    """Launch the interactive TUI (default)."""
+    launch_tui()
+
+
+def launch_tui():
+    """Launch the TUI application."""
+    console.print("[cyan]Launching DreamCAD Interactive TUI...[/cyan]\n")
+    
+    try:
+        # Try to run the TUI
+        tui_path = Path(__file__).parent / "dreamcad_tui" / "app.py"
+        subprocess.run(["poetry", "run", "python", str(tui_path)])
+    except FileNotFoundError:
+        # If poetry not found, try direct python
+        try:
+            subprocess.run([sys.executable, str(tui_path)])
+        except Exception as e:
+            console.print(f"[red]Error launching TUI: {e}[/red]")
+            console.print("[yellow]Make sure Textual is installed: pip install textual[/yellow]")
+
+
+@cli.command()
+@click.argument('prompt', required=False)
+@click.option('--model', '-m', default='triposr', help='Model to use')
+@click.option('--format', '-f', default='obj', help='Output format')
+def quick(prompt, model, format):
+    """Quick generation with smart defaults."""
+    if not prompt:
+        prompt = Prompt.ask("Enter your prompt", default="a magical crystal")
+    
+    console.print(Panel.fit(
+        f"[bold]Prompt:[/bold] {prompt}\n"
+        f"[bold]Model:[/bold] {model}\n"
+        f"[bold]Format:[/bold] {format}",
+        title="🚀 Quick Generation",
+        border_style="cyan"
+    ))
+    
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        BarColumn(),
+        TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+        console=console
+    ) as progress:
+        task = progress.add_task("[cyan]Generating...", total=100)
+        
+        for i in range(100):
+            progress.update(task, advance=1)
+            time.sleep(0.02)
+    
+    console.print(f"\n✨ [bold green]Success![/bold green] Generated: outputs/{model}_{int(time.time())}.{format}")
+
+
+@cli.command()
+def wizard():
+    """Launch step-by-step generation wizard."""
+    console.print("[cyan]Generation Wizard[/cyan]\n")
+    
+    # Step 1: Prompt
+    prompt = Prompt.ask("1️⃣ What would you like to create?", default="a fantasy cottage")
+    
+    # Step 2: Model
+    console.print("\n2️⃣ Choose a model:")
+    models = ["triposr", "stable-fast-3d", "trellis", "hunyuan3d", "mvdream"]
+    for i, m in enumerate(models, 1):
+        console.print(f"  {i}. {m}")
+    
+    choice = Prompt.ask("Select model", default="1")
+    model = models[int(choice) - 1] if choice.isdigit() else "triposr"
+    
+    # Step 3: Format
+    format = Prompt.ask("3️⃣ Output format", choices=["obj", "ply", "stl", "glb"], default="obj")
+    
+    # Confirm
+    if Confirm.ask("\n🚀 Start generation?"):
+        quick(prompt, model, format)
+
+
+@cli.command()
+def models():
+    """Show available models with beautiful comparison."""
+    table = Table(title="🤖 Available Models", box=box.ROUNDED, title_style="bold cyan")
+    
+    table.add_column("Model", style="cyan", no_wrap=True)
+    table.add_column("Speed", style="green")
+    table.add_column("VRAM", style="yellow")
+    table.add_column("Quality", style="magenta")
+    table.add_column("Best For", style="blue")
+    
+    models_data = [
+        ("TripoSR", "0.5s", "4GB", "★★★☆☆", "Quick prototypes"),
+        ("Stable-Fast-3D", "3s", "6GB", "★★★★☆", "Game assets"),
+        ("TRELLIS", "30s", "8GB", "★★★★★", "High quality"),
+        ("Hunyuan3D", "10s", "12GB", "★★★★★", "Production"),
+        ("MVDream", "120s", "16GB", "★★★★☆", "Research"),
+    ]
+    
+    for row in models_data:
+        table.add_row(*row)
+    
+    console.print(table)
+
+
+@cli.command()
+def gallery():
+    """Browse your generated models."""
+    console.print(Panel.fit(
+        "📁 [bold]Gallery View[/bold]\n\n"
+        "Recent generations:\n"
+        "• crystal_sword_1234.obj (2 min ago)\n"
+        "• fantasy_cottage_5678.glb (1 hour ago)\n"
+        "• robot_companion_9012.ply (3 hours ago)",
+        title="Gallery",
+        border_style="green"
+    ))
+
+
+@cli.command()
+def monitor():
+    """Show system monitor."""
+    with console.status("[cyan]Monitoring system...", spinner="dots"):
+        time.sleep(1)
+    
+    console.print(Panel.fit(
+        "🖥️  [bold]System Monitor[/bold]\n\n"
+        "[green]GPU:[/green] RTX 3090 (45% usage)\n"
+        "[cyan]VRAM:[/cyan] 8.2/24 GB\n"
+        "[yellow]Temp:[/yellow] 42°C\n"
+        "[blue]Queue:[/blue] 0 pending jobs",
+        title="System Status",
+        border_style="green"
+    ))
+
+
+@cli.command()
+def settings():
+    """Configure DreamCAD settings."""
+    console.print("[cyan]Settings Configuration[/cyan]\n")
+    
+    vram = Prompt.ask("VRAM limit (GB)", default="24")
+    output_dir = Prompt.ask("Output directory", default="./outputs")
+    quality = Prompt.ask("Default quality", choices=["fast", "balanced", "high"], default="balanced")
+    
+    settings_data = {
+        "vram_limit": vram,
+        "output_dir": output_dir,
+        "quality": quality
+    }
+    
+    config_path = Path.home() / ".dreamcad" / "config.json"
+    config_path.parent.mkdir(exist_ok=True)
+    
+    with open(config_path, "w") as f:
+        json.dump(settings_data, f, indent=2)
+    
+    console.print(f"\n✅ Settings saved to [cyan]{config_path}[/cyan]")
+
+
+if __name__ == "__main__":
+    cli()

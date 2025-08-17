@@ -1,0 +1,330 @@
+#!/usr/bin/env python3
+"""
+🏢 DreamCAD City Builder - Generate low-poly buildings for your SimCity game!
+"""
+
+import sys
+import time
+import random
+from pathlib import Path
+from datetime import datetime
+
+from rich.console import Console
+from rich.panel import Panel
+from rich.table import Table
+from rich.prompt import Prompt, Confirm
+from rich.text import Text
+from rich import box
+import typer
+
+# Initialize console and app
+console = Console()
+app = typer.Typer(help="🏢 Generate low-poly city buildings for games")
+
+def generate_city_building(building_type: str, style: str = "blocky"):
+    """Generate a low-poly city building mesh."""
+    
+    vertices = []
+    faces = []
+    
+    # Building parameters based on type
+    if building_type == "homeless_shelter":
+        width = 4.0
+        depth = 3.0
+        height = 2.5
+        roof_height = 0.8
+        color = "blue"
+    elif building_type == "apartment":
+        width = 3.0
+        depth = 3.0
+        height = 4.0
+        roof_height = 0.5
+        color = "gray"
+    elif building_type == "office":
+        width = 5.0
+        depth = 4.0
+        height = 6.0
+        roof_height = 0.3
+        color = "glass"
+    else:  # generic
+        width = 3.5
+        depth = 3.0
+        height = 3.0
+        roof_height = 1.0
+        color = "brown"
+    
+    # Create blocky low-poly building
+    # Base vertices (bottom)
+    vertices.extend([
+        (0, 0, 0),
+        (width, 0, 0),
+        (width, 0, depth),
+        (0, 0, depth),
+    ])
+    
+    # Top vertices
+    vertices.extend([
+        (0, height, 0),
+        (width, height, 0),
+        (width, height, depth),
+        (0, height, depth),
+    ])
+    
+    # Roof vertices (simple peaked roof)
+    vertices.extend([
+        (width/2, height + roof_height, depth/2),  # Peak
+    ])
+    
+    # Add simple windows (as indented rectangles)
+    window_inset = 0.1
+    for floor in range(1, int(height)):
+        y = floor * 1.0
+        # Front windows
+        vertices.extend([
+            (width * 0.2, y, -window_inset),
+            (width * 0.4, y, -window_inset),
+            (width * 0.4, y + 0.8, -window_inset),
+            (width * 0.2, y + 0.8, -window_inset),
+        ])
+        vertices.extend([
+            (width * 0.6, y, -window_inset),
+            (width * 0.8, y, -window_inset),
+            (width * 0.8, y + 0.8, -window_inset),
+            (width * 0.6, y + 0.8, -window_inset),
+        ])
+    
+    # Define faces (walls)
+    faces.extend([
+        [1, 2, 6, 5],  # Front
+        [3, 4, 8, 7],  # Back
+        [1, 5, 8, 4],  # Left
+        [2, 3, 7, 6],  # Right
+        [1, 4, 3, 2],  # Bottom
+    ])
+    
+    # Roof faces
+    faces.extend([
+        [5, 6, 9],  # Front roof
+        [6, 7, 9],  # Right roof
+        [7, 8, 9],  # Back roof
+        [8, 5, 9],  # Left roof
+    ])
+    
+    return vertices, faces, color
+
+def save_building(vertices, faces, filename, metadata):
+    """Save building to OBJ file."""
+    
+    with open(filename, 'w') as f:
+        f.write(f"# Low-Poly City Building\n")
+        f.write(f"# Type: {metadata['type']}\n")
+        f.write(f"# Style: {metadata['style']}\n")
+        f.write(f"# Generated: {datetime.now()}\n")
+        f.write(f"# Vertices: {len(vertices)}\n")
+        f.write(f"# Faces: {len(faces)}\n\n")
+        
+        # Write vertices
+        for v in vertices:
+            f.write(f"v {v[0]:.4f} {v[1]:.4f} {v[2]:.4f}\n")
+        
+        f.write("\n")
+        
+        # Write faces
+        for face in faces:
+            face_str = " ".join(str(i) for i in face)
+            f.write(f"f {face_str}\n")
+
+@app.command()
+def generate(
+    prompt: str = typer.Argument(None, help="Building description"),
+    interactive: bool = typer.Option(True, "--interactive", "-i", help="Interactive mode")
+):
+    """🏗️ Generate a low-poly city building"""
+    
+    console.print("""[bold cyan]
+╔═══════════════════════════════════════════════════════╗
+║  🏢 DreamCAD City Builder - Low-Poly Generator 🏢    ║
+╚═══════════════════════════════════════════════════════╝
+[/bold cyan]""")
+    
+    if interactive or not prompt:
+        console.print("[yellow]Welcome! Let's create a low-poly building for your city.[/yellow]\n")
+        
+        # Building type selection
+        building_types = {
+            "1": ("🏥 Homeless Shelter", "homeless_shelter"),
+            "2": ("🏢 Apartment Building", "apartment"),
+            "3": ("🏙️ Office Tower", "office"),
+            "4": ("🏪 Generic Building", "generic")
+        }
+        
+        console.print("[bold]Select building type:[/bold]")
+        for key, (name, _) in building_types.items():
+            console.print(f"  {key}. {name}")
+        
+        choice = Prompt.ask("\n[cyan]Your choice[/cyan]", choices=list(building_types.keys()))
+        building_name, building_type = building_types[choice]
+        
+        # Style selection
+        console.print("\n[bold]Select style:[/bold]")
+        console.print("  1. 🟦 Super Blocky (minimal polygons)")
+        console.print("  2. 🟨 Moderately Detailed")
+        console.print("  3. 🟩 Slightly Detailed")
+        
+        style_choice = Prompt.ask("[cyan]Style[/cyan]", choices=["1", "2", "3"], default="1")
+        style = ["blocky", "moderate", "detailed"][int(style_choice) - 1]
+        
+    else:
+        # Parse from prompt
+        building_type = "homeless_shelter" if "homeless" in prompt.lower() else "generic"
+        style = "blocky"
+        building_name = prompt
+    
+    # Show generation plan
+    panel = Panel(f"""[bold yellow]🎯 Building Generation Plan[/bold yellow]
+    
+[cyan]Type:[/cyan] {building_name}
+[cyan]Style:[/cyan] Low-poly, {style}
+[cyan]Optimization:[/cyan] Game-ready
+[cyan]Polycount:[/cyan] < 100 faces
+[cyan]Format:[/cyan] OBJ file
+""", box=box.ROUNDED, border_style="cyan")
+    
+    console.print(panel)
+    
+    if interactive:
+        if not Confirm.ask("[bold]Generate building?[/bold]"):
+            console.print("[red]Cancelled![/red]")
+            return
+    
+    # Generate building
+    console.print("\n[bold cyan]🏗️ Generating building...[/bold cyan]")
+    
+    with console.status("[yellow]Creating low-poly geometry...[/yellow]"):
+        vertices, faces, color = generate_city_building(building_type, style)
+        time.sleep(1)  # Simulate generation
+        
+        # Save to file
+        output_dir = Path("outputs/city_buildings")
+        output_dir.mkdir(parents=True, exist_ok=True)
+        
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = output_dir / f"building_{building_type}_{timestamp}.obj"
+        
+        metadata = {
+            "type": building_type,
+            "style": style,
+            "color_hint": color
+        }
+        
+        save_building(vertices, faces, filename, metadata)
+    
+    # Success message
+    success_panel = Panel(f"""[bold green]✅ Building Generated Successfully![/bold green]
+
+[cyan]File:[/cyan] {filename.name}
+[cyan]Vertices:[/cyan] {len(vertices)}
+[cyan]Faces:[/cyan] {len(faces)}
+[cyan]Style:[/cyan] Low-poly {style}
+[cyan]Color Hint:[/cyan] {color}
+
+[yellow]Ready for SimCity-style game import![/yellow]
+[dim]Tip: Apply {color} material in your game engine[/dim]
+""", box=box.DOUBLE, border_style="green")
+    
+    console.print(success_panel)
+    
+    # Show preview
+    console.print("\n[bold]📐 Mesh Preview (first few vertices):[/bold]")
+    for i, v in enumerate(vertices[:5], 1):
+        console.print(f"  v{i}: ({v[0]:.2f}, {v[1]:.2f}, {v[2]:.2f})")
+    console.print(f"  ... and {len(vertices)-5} more vertices")
+
+@app.command()
+def batch():
+    """🏘️ Generate multiple buildings at once"""
+    
+    console.print("[bold cyan]🏘️ Batch Building Generation[/bold cyan]\n")
+    
+    buildings = [
+        ("homeless_shelter", "Homeless Services Center"),
+        ("apartment", "Low-Income Housing"),
+        ("office", "Social Services Office"),
+        ("generic", "Community Center")
+    ]
+    
+    table = Table(title="Buildings to Generate", box=box.ROUNDED)
+    table.add_column("Type", style="cyan")
+    table.add_column("Name", style="yellow")
+    table.add_column("Status", style="green")
+    
+    for building_type, name in buildings:
+        table.add_row(building_type, name, "⏳ Pending")
+    
+    console.print(table)
+    
+    if Confirm.ask("\n[bold]Generate all buildings?[/bold]"):
+        output_dir = Path("outputs/city_buildings")
+        output_dir.mkdir(parents=True, exist_ok=True)
+        
+        for building_type, name in buildings:
+            console.print(f"\n[yellow]Generating {name}...[/yellow]")
+            
+            vertices, faces, color = generate_city_building(building_type, "blocky")
+            
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = output_dir / f"building_{building_type}_{timestamp}.obj"
+            
+            metadata = {"type": building_type, "style": "blocky", "color_hint": color}
+            save_building(vertices, faces, filename, metadata)
+            
+            console.print(f"  [green]✓[/green] Saved to {filename.name}")
+            time.sleep(0.5)
+        
+        console.print("\n[bold green]✅ All buildings generated![/bold green]")
+        console.print(f"[cyan]Location:[/cyan] {output_dir}")
+
+@app.command()
+def preview():
+    """👀 Preview recent buildings"""
+    
+    output_dir = Path("outputs/city_buildings")
+    if not output_dir.exists():
+        console.print("[yellow]No buildings generated yet![/yellow]")
+        return
+    
+    obj_files = list(output_dir.glob("*.obj"))[:5]
+    
+    if not obj_files:
+        console.print("[yellow]No buildings found![/yellow]")
+        return
+    
+    console.print("[bold cyan]🏢 Recent Buildings[/bold cyan]\n")
+    
+    for i, obj_file in enumerate(obj_files, 1):
+        size_kb = obj_file.stat().st_size / 1024
+        
+        # Read first few lines to get metadata
+        with open(obj_file) as f:
+            lines = f.readlines()[:6]
+        
+        building_type = "unknown"
+        for line in lines:
+            if "# Type:" in line:
+                building_type = line.split(":")[1].strip()
+                break
+        
+        emoji = {"homeless_shelter": "🏥", "apartment": "🏢", "office": "🏙️"}.get(building_type, "🏪")
+        
+        panel = Panel(f"""[cyan]File:[/cyan] {obj_file.name}
+[cyan]Type:[/cyan] {emoji} {building_type}
+[cyan]Size:[/cyan] {size_kb:.1f} KB
+[cyan]Created:[/cyan] {datetime.fromtimestamp(obj_file.stat().st_mtime).strftime('%Y-%m-%d %H:%M')}""",
+            title=f"Building #{i}",
+            box=box.ROUNDED,
+            border_style="blue"
+        )
+        console.print(panel)
+
+if __name__ == "__main__":
+    app()

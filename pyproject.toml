@@ -5,7 +5,10 @@ description = "MVDream text-to-3D generation on Manjaro with RTX 3090"
 authors = ["C. Thomas Brittain <cthomasbrittain@hotmail.com>"]
 license = "MIT"
 readme = "README.md"
-packages = [{include = "mvdream", from = "."}]
+packages = [
+    {include = "mvdream", from = "."},
+    {include = "dream_cad", from = "."}
+]
 
 [tool.poetry.urls]
 homepage = "https://github.com/Ladvien/dream-cad"
@@ -56,6 +59,9 @@ trimesh = {extras = ["easy"], version = "^4.0.0"}
 networkx = "^3.1"
 pysdf = "^0.1.9"
 PyMCubes = "^0.1.4"
+textual = "^5.3.0"
+typer = "^0.16.0"
+click = "^8.2.1"
 
 [[tool.poetry.source]]
 name = "pytorch-cu118"

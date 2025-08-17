@@ -1,0 +1,67 @@
+{
+  "generated_at": "2025-08-17T00:42:07.714452",
+  "queue_metrics": {
+    "total_submitted": 5,
+    "total_completed": 3,
+    "total_failed": 0,
+    "total_cancelled": 0,
+    "total_pending": 0,
+    "total_running": 0,
+    "average_wait_time": 0.0,
+    "average_processing_time": 40.0,
+    "throughput_per_hour": 93103448.27586207,
+    "queue_efficiency": 0.6,
+    "peak_queue_size": 2,
+    "total_gpu_hours": 0.03333333333333333,
+    "estimated_cost_usd": 0.016666666666666666
+  },
+  "model_performance": {
+    "triposr": {
+      "model_name": "triposr",
+      "total_jobs": 3,
+      "successful_jobs": 2,
+      "failed_jobs": 0,
+      "average_generation_time": 40.0,
+      "median_generation_time": 40.0,
+      "min_generation_time": 30.0,
+      "max_generation_time": 50.0,
+      "total_gpu_hours": 0.02222222222222222,
+      "average_memory_usage_gb": 0.0,
+      "success_rate": 0.6666666666666666
+    },
+    "stable-fast-3d": {
+      "model_name": "stable-fast-3d",
+      "total_jobs": 2,
+      "successful_jobs": 1,
+      "failed_jobs": 0,
+      "average_generation_time": 40.0,
+      "median_generation_time": 40.0,
+      "min_generation_time": 40.0,
+      "max_generation_time": 40.0,
+      "total_gpu_hours": 0.011111111111111112,
+      "average_memory_usage_gb": 0.0,
+      "success_rate": 0.5
+    }
+  },
+  "time_series": {
+    "2025-08-17T00:00:00": {
+      "submitted": 5,
+      "completed": 3
+    }
+  },
+  "user_statistics": {},
+  "top_users": [],
+  "busiest_hours": [
+    {
+      "hour": "2025-08-17T00:00:00",
+      "stats": {
+        "submitted": 5,
+        "completed": 3
+      }
+    }
+  ],
+  "model_recommendations": {
+    "triposr": "Performance within normal parameters.",
+    "stable-fast-3d": "Performance within normal parameters."
+  }
+}

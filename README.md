@@ -1,161 +1,157 @@
-# Dream-CAD
+# 🎨 DreamCAD - Multi-Model 3D Generation System
 
-MVDream text-to-3D generation system on Manjaro Linux with NVIDIA RTX 3090.
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![PyTorch](https://img.shields.io/badge/PyTorch-2.0+-ee4c2c.svg)](https://pytorch.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-## System Requirements
+Transform text prompts into 3D models using state-of-the-art AI models. DreamCAD integrates 5 powerful 3D generation models in a unified, easy-to-use system.
 
-- **OS**: Manjaro Linux
-- **GPU**: NVIDIA RTX 3090 (24GB VRAM)
-- **CUDA**: 12.9
-- **Python**: 3.13
-- **RAM**: 32GB
-- **Storage**: 50GB+ free space on `/mnt/datadrive_m2`
+## Overview
+
+DreamCAD is a comprehensive 3D generation system that brings together multiple state-of-the-art AI models for creating 3D content from text prompts and images. Whether you need quick prototypes, game-ready assets, or high-quality production models, DreamCAD provides the right tool for the job.
+
+## ✨ Features
+
+- **5 Integrated Models**: TripoSR, Stable-Fast-3D, TRELLIS, Hunyuan3D, MVDream
+- **Multiple Output Formats**: OBJ, PLY, STL, GLB, NeRF
+- **Production Ready**: Queue management, monitoring, and analytics
+- **Beautiful CLI**: Rich terminal interface with animations
+- **Hardware Aware**: Automatic model selection based on available resources
+
+## 🚀 Quick Start
 
 ## Installation
 
-1. **Clone the repository**:
 ```bash
-git clone https://github.com/Ladvien/dream-cad.git /mnt/datadrive_m2/dream-cad
-cd /mnt/datadrive_m2/dream-cad
-```
+# Clone the repository
+git clone https://github.com/Ladvien/dream-cad.git
+cd dream-cad
 
-2. **Install Poetry**:
-```bash
+# Install Poetry (if not installed)
 curl -sSL https://install.python-poetry.org | python3 -
-```
 
-3. **Install dependencies**:
-```bash
+# Install dependencies
 poetry install
-```
 
-4. **Install PyTorch with CUDA support**:
-```bash
-poetry run pip install torch==2.7.1+cu118 torchvision==0.22.1+cu118 torchaudio==2.7.1+cu118 --index-url https://download.pytorch.org/whl/cu118
-```
-
-5. **Install MVDream**:
-```bash
-poetry run pip install -e extern/MVDream/
-```
-
-## Project Structure
-
-- `mvdream/` - Main project package
-- `extern/MVDream/` - ByteDance MVDream repository
-- `MVDream-threestudio/` - 3D generation extension
-- `tests/` - Test suite
-- `docs/` - Documentation
-- `.venv/` - Virtual environment
-
-## Environment Variables
-
-Add to your `~/.zshrc`:
-```bash
-export PIP_CACHE_DIR=/mnt/datadrive_m2/.pip-cache
-export TORCH_HOME=/mnt/datadrive_m2/.torch
-export HF_HOME=/mnt/datadrive_m2/.huggingface
-export CUDA_HOME=/opt/cuda
-export PATH=$CUDA_HOME/bin:$PATH
-export LD_LIBRARY_PATH=$CUDA_HOME/lib64:$LD_LIBRARY_PATH
+# Activate environment
+poetry shell
 ```
 
 ## Usage
 
-### Activate Environment
+### Generate Your First 3D Model
+
 ```bash
-cd /mnt/datadrive_m2/dream-cad
-poetry shell
+# Launch Web UI (Recommended)
+python scripts/launch_ui.py
+# Open browser to http://localhost:7860
+
+# Interactive CLI
+python -m dream_cad.cli.main
+
+# Direct generation
+python -m dream_cad.examples.quick_generation
 ```
 
-### Run Tests
+## 🎮 Available Models
+
+### Supported Models
+
+| Model | Speed | Quality | VRAM | Best For |
+|-------|-------|---------|------|----------|
+| ⚡ TripoSR | 0.5s | ★★★☆☆ | 4-6GB | Quick prototypes |
+| 🎮 Stable-Fast-3D | 3s | ★★★★☆ | 6-8GB | Game assets with PBR |
+| 💎 TRELLIS | 30s | ★★★★★ | 16-24GB | High quality |
+| 🏭 Hunyuan3D | 5s | ★★★★★ | 12-16GB | Production assets |
+| 👁️ MVDream | 60s | ★★★★☆ | 8-12GB | Multi-view consistency |
+
+## 📚 Documentation
+
+- [API Reference](docs/api_reference.md)
+- [Model Comparison](docs/model_comparison.md)
+- [Hardware Requirements](docs/hardware_requirements.md)
+- [Configuration Guide](docs/configuration_examples.md)
+- [Troubleshooting](docs/troubleshooting_models.md)
+
+## 🛠️ CLI Tools
+
+### DreamCAD CLI
+Beautiful command-line interface with Rich styling:
+
 ```bash
-poetry run poe test        # Run all tests
-poetry run poe test-gpu    # Run GPU tests only
+# List available models
+python cli/dream_cli.py models
+
+# Show gallery of generated models
+python cli/dream_cli.py gallery
+
+# Interactive demo
+python cli/dream_cli.py demo
 ```
 
-### Linting and Formatting
+### City Builder
+Generate low-poly buildings for games:
+
 ```bash
-poetry run poe lint        # Run linters
-poetry run poe format      # Format code
+# Generate a single building
+python cli/dreamcad generate
+
+# Batch generate multiple buildings
+python cli/dreamcad batch
+
+# Preview generated buildings
+python cli/dreamcad preview
 ```
 
-## Development
+## 📁 Project Structure
 
-This project uses:
-- **Poetry** for dependency management
-- **Ruff** for linting and formatting
-- **Bandit** for security scanning
-- **Pytest** for testing
-- **Sphinx** for documentation
-
-## Documentation
-
-- [System Specifications](docs/system-specs.md)
-- [CUDA Setup Guide](docs/cuda-setup.md)
-- [Project Structure](docs/project-structure.md)
-- [Troubleshooting Guide](docs/troubleshooting.md)
-- [Model Management](docs/models.md)
-
-## FAQ
-
-### Q: How do I check if my system is properly configured?
-**A:** Run the diagnostic tool:
-```bash
-poetry run poe diagnose
 ```
-This will check CUDA, dependencies, model files, and system configuration.
-
-### Q: What if I get a PyTorch NCCL library error?
-**A:** This is a known issue with PyTorch 2.7.1. The generation scripts handle this gracefully with fallback mechanisms. For a permanent fix, see the [Troubleshooting Guide](docs/troubleshooting.md#1-pytorch-nccl-library-error).
-
-### Q: How much disk space do I need?
-**A:** Minimum 50GB free space on `/mnt/datadrive_m2`:
-- Models: ~10GB
-- Outputs: ~20GB
-- Cache: ~10GB
-- Working space: ~10GB
-
-### Q: Can I run this without an RTX 3090?
-**A:** MVDream requires a CUDA-capable GPU with at least 16GB VRAM. RTX 3090 (24GB) is recommended for optimal performance. Other suitable GPUs include RTX 4090, A5000, or A6000.
-
-### Q: How long does 3D generation take?
-**A:** On an RTX 3090:
-- 2D multi-view: 1-2 minutes
-- 3D mesh generation: 90-150 minutes
-- Quality depends on settings in `configs/mvdream-sd21.yaml`
-
-### Q: What if generation runs out of memory?
-**A:** Try these solutions:
-1. Reduce batch size in config
-2. Enable memory-efficient attention
-3. Lower resolution
-4. See [Memory Optimization Tips](docs/troubleshooting.md#memory-optimization-tips)
-
-### Q: How do I download the pre-trained models?
-**A:** Use the download script:
-```bash
-poetry run poe download-models
-```
-This downloads the sd-v2.1-base-4view model (~5GB) to `/mnt/datadrive_m2/dream-cad/models/`.
-
-### Q: Can I use custom prompts for generation?
-**A:** Yes! For 3D generation:
-```bash
-poetry run poe generate-3d "your custom prompt here"
-# Or use the web interface:
-poetry run poe generate-3d-web
+dream-cad/
+├── dream_cad/          # Core package
+│   ├── models/         # Model implementations
+│   ├── monitoring/     # System monitoring
+│   ├── queue/          # Job queue management
+│   └── benchmark/      # Performance testing
+├── cli/                # Command-line tools
+├── examples/           # Example scripts
+├── docs/              # Documentation
+└── configs/           # Configuration files
 ```
 
-### Q: What Python version is required?
-**A:** Python 3.10+ is required. The project is tested with Python 3.13.5.
+## 🧪 Testing
 
-### Q: How do I contribute or report issues?
-**A:** 
-1. Run diagnostics: `poetry run poe diagnose`
-2. Check [Troubleshooting Guide](docs/troubleshooting.md)
-3. Create an issue with diagnostic output and error messages
+```bash
+# Run all tests
+poetry run pytest
 
-## License
+# Run specific test
+poetry run pytest tests/test_triposr.py
 
-MIT License - See [LICENSE](LICENSE) file for details.
+# Run with coverage
+poetry run pytest --cov=dream_cad
+```
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🙏 Acknowledgments
+
+- [TripoSR](https://github.com/VAST-AI-Research/TripoSR) by VAST AI Research
+- [Stable-Fast-3D](https://github.com/Stability-AI/stable-fast-3d) by Stability AI
+- [TRELLIS](https://github.com/Microsoft/TRELLIS) by Microsoft
+- [Hunyuan3D](https://github.com/Tencent/Hunyuan3D) by Tencent
+- [MVDream](https://github.com/bytedance/MVDream) by ByteDance
+
+## 📞 Support
+
+- **Issues**: [GitHub Issues](https://github.com/Ladvien/dream-cad/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/Ladvien/dream-cad/discussions)
+
+---
+
+Made with ❤️ by the DreamCAD team

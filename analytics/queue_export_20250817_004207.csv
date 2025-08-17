@@ -1,0 +1,6 @@
+id,prompt,model,status,priority,created_at,completed_at,generation_time,gpu_memory_gb,output_path,error
+job_20250817_004207_0,test_0,triposr,completed,2,2025-08-17T00:42:07.711838,2025-08-17T00:42:07.711859,30.0,0.0,,
+job_20250817_004207_1,test_1,stable-fast-3d,completed,2,2025-08-17T00:42:07.711881,2025-08-17T00:42:07.711896,40.0,0.0,,
+job_20250817_004207_2,test_2,triposr,completed,2,2025-08-17T00:42:07.711909,2025-08-17T00:42:07.711920,50.0,0.0,,
+job_20250817_004207_3,test_3,stable-fast-3d,queued,2,2025-08-17T00:42:07.711931,,0.0,0.0,,
+job_20250817_004207_4,test_4,triposr,queued,2,2025-08-17T00:42:07.711945,,0.0,0.0,,
