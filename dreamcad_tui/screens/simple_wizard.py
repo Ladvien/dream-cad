@@ -82,21 +82,47 @@ class SimpleWizard(Screen):
     def _populate_models(self):
         model_select = self.query_one("#model-select", Select)
         
-        # Always add demo mode
-        options = [("🎭 Demo Mode - Simple meshes", "demo")]
+        options = []
+        default = None
         
-        # Add real models if available
+        # Get available models from app
         models = self.app.get_available_models() if hasattr(self.app, 'get_available_models') else {}
+        
+        # Add all models with their status
         for model_id, info in models.items():
-            name = info.get('info', {}).get('name', model_id)
+            model_info = info.get('info', {})
+            name = model_info.get('name', model_id)
+            
+            # Determine status and create label
             if info.get('available'):
-                options.append((f"✓ {name}", model_id))
+                label = f"✓ {name} - {model_info.get('speed', 'Ready')}"
+                options.append((label, model_id))
+                if default is None:
+                    default = model_id
             elif info.get('cached'):
-                options.append((f"◉ {name} (cached)", model_id))
-                
+                label = f"◉ {name} - Cached"
+                options.append((label, model_id))
+                if default is None:
+                    default = model_id
+            elif info.get('vram_compatible', True):
+                label = f"⬇ {name} - {model_info.get('size_gb', 0):.1f}GB download"
+                options.append((label, model_id))
+            else:
+                label = f"✗ {name} - Insufficient VRAM"
+                options.append((label, model_id))
+        
+        # Always add demo mode as fallback
+        if self.app.is_demo_mode or not options:
+            options.insert(0, ("🎭 Demo Mode - Simple meshes", "demo"))
+            if default is None:
+                default = "demo"
+        else:
+            options.append(("🎭 Demo Mode - Simple meshes", "demo"))
+            
         model_select.set_options(options)
-        model_select.value = "demo"
-        self._update_model_info("demo")
+        if default:
+            model_select.value = default
+            self._update_model_info(default)
             
     @on(Select.Changed, "#model-select")
     def on_model_changed(self, event: Select.Changed):
@@ -112,11 +138,45 @@ class SimpleWizard(Screen):
                 border_style="yellow"
             )
         else:
-            info_text = Panel(
-                Text(f"Model: {model_id}", style="cyan"),
-                title="Model Info",
-                border_style="cyan"
-            )
+            # Get model info from app
+            model_info = self.app.get_model_info(model_id) if hasattr(self.app, 'get_model_info') else None
+            
+            if model_info:
+                info = model_info.get('info', {})
+                
+                # Build info table
+                table = Table.grid(padding=0)
+                table.add_column(style="cyan", width=12)
+                table.add_column()
+                
+                table.add_row("Quality:", info.get('quality', 'Unknown'))
+                table.add_row("Speed:", info.get('speed', 'Unknown'))
+                table.add_row("VRAM:", f"{info.get('min_vram_gb', 0)}GB minimum")
+                table.add_row("Size:", f"{info.get('size_gb', 0):.1f}GB download")
+                
+                # Add status
+                if model_info.get('available'):
+                    status = Text("Ready to use", style="green")
+                elif model_info.get('cached'):
+                    status = Text("Cached, loading required", style="cyan")
+                elif model_info.get('vram_compatible', True):
+                    status = Text("Will download on first use", style="yellow")
+                else:
+                    status = Text("Insufficient VRAM", style="red")
+                    
+                table.add_row("Status:", status)
+                
+                info_text = Panel(
+                    table,
+                    title=info.get('description', info.get('name', 'Model Info')),
+                    border_style="cyan"
+                )
+            else:
+                info_text = Panel(
+                    Text(f"Model: {model_id}", style="cyan"),
+                    title="Model Info",
+                    border_style="cyan"
+                )
                 
         info_widget.update(info_text)
         
