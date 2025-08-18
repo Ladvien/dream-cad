@@ -154,8 +154,8 @@ class DreamCADApp(App):
             from ..screens.dashboard_new import DashboardScreen
             self.push_screen(DashboardScreen())
         elif screen_name == "wizard":
-            from ..screens.generation_wizard import GenerationWizard
-            self.push_screen(GenerationWizard())
+            from ..screens.simple_wizard import SimpleWizard
+            self.push_screen(SimpleWizard())
         elif screen_name == "queue":
             from ..screens.queue import QueueScreen
             self.push_screen(QueueScreen())
