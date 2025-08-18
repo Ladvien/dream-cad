@@ -205,8 +205,13 @@ class WizardScreen(Screen):
         )
         
         self._update_status(f"Starting generation: {prompt[:50]}...")
-        self.app.generation_worker.process_job(self.current_job)
+        self.run_worker(self._run_generation)
         
+    @work(thread=True)
+    async def _run_generation(self):
+        if hasattr(self, 'current_job'):
+            await self.app.generation_worker.process_job(self.current_job)
+    
     def cancel_generation(self):
         if hasattr(self, 'current_job'):
             self.app.generation_worker.cancel_job(self.current_job.id)

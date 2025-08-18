@@ -82,7 +82,6 @@ class GenerationWorker:
         self.active_jobs[job.id] = job
         return job
         
-    @work(thread=True)
     async def process_job(self, job: GenerationJob) -> None:
         try:
             self.cancel_flags[job.id] = False
