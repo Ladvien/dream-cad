@@ -1,5 +1,3 @@
-"""Core benchmarking infrastructure for 3D generation models."""
-
 import json
 import logging
 import time
@@ -8,16 +6,13 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 import hashlib
-
 import psutil
-
 try:
     import torch
     TORCH_AVAILABLE = True
 except ImportError:
     TORCH_AVAILABLE = False
     torch = None
-
 try:
     from ..models.factory import ModelFactory
     from ..models.base import Model3D
@@ -26,13 +21,9 @@ except ImportError:
     MODEL_FACTORY_AVAILABLE = False
     ModelFactory = None
     Model3D = None
-
 logger = logging.getLogger(__name__)
-
-
 @dataclass
 class BenchmarkConfig:
-    """Configuration for benchmark runs."""
     model_name: str
     prompt: str
     num_inference_steps: int = 50
@@ -48,31 +39,21 @@ class BenchmarkConfig:
     timeout_seconds: int = 600
     save_outputs: bool = True
     output_dir: Optional[Path] = None
-    
     def to_dict(self) -> Dict[str, Any]:
-        """Convert to dictionary."""
         data = asdict(self)
         if self.output_dir:
             data["output_dir"] = str(self.output_dir)
         return data
-    
     def get_hash(self) -> str:
-        """Get unique hash for this configuration."""
         config_str = f"{self.model_name}_{self.prompt}_{self.num_inference_steps}_{self.guidance_scale}"
-        # MD5 used only for generating short hash IDs, not for security
         return hashlib.md5(config_str.encode(), usedforsecurity=False).hexdigest()[:8]
-
-
 @dataclass
 class BenchmarkResult:
-    """Results from a single benchmark run."""
     config: BenchmarkConfig
     success: bool
     generation_time_seconds: float
     warmup_time_seconds: float = 0.0
     model_load_time_seconds: float = 0.0
-    
-    # Resource metrics
     peak_vram_gb: float = 0.0
     avg_vram_gb: float = 0.0
     peak_ram_gb: float = 0.0
@@ -81,92 +62,64 @@ class BenchmarkResult:
     avg_gpu_temp_c: float = 0.0
     peak_gpu_utilization: float = 0.0
     avg_gpu_utilization: float = 0.0
-    
-    # Output metrics
     output_path: Optional[str] = None
     output_size_mb: float = 0.0
     vertex_count: int = 0
     face_count: int = 0
     texture_resolution: Optional[Tuple[int, int]] = None
     has_pbr_materials: bool = False
-    
-    # Quality scores (0-100)
     mesh_quality_score: float = 0.0
     texture_quality_score: float = 0.0
     prompt_adherence_score: float = 0.0
     overall_quality_score: float = 0.0
-    
-    # Error information
     error_message: Optional[str] = None
     error_type: Optional[str] = None
-    
-    # Metadata
     timestamp: str = field(default_factory=lambda: datetime.now().isoformat())
     benchmark_version: str = "1.0.0"
     hardware_info: Dict[str, Any] = field(default_factory=dict)
-    
     def to_dict(self) -> Dict[str, Any]:
-        """Convert to dictionary for serialization."""
         data = asdict(self)
         data["config"] = self.config.to_dict()
         return data
-    
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "BenchmarkResult":
-        """Create from dictionary."""
         data = data.copy()
         if "config" in data:
             data["config"] = BenchmarkConfig(**data["config"])
         return cls(**data)
-
-
 class ModelBenchmark:
-    """Benchmark runner for individual models."""
-    
     def __init__(
         self,
         model_name: str,
         output_dir: Optional[Path] = None,
         enable_monitoring: bool = True,
     ):
-        """Initialize model benchmark."""
         self.model_name = model_name
         self.output_dir = output_dir or Path("benchmarks") / model_name
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.enable_monitoring = enable_monitoring
-        
         self.model: Optional[Model3D] = None
         self.monitor_data: List[Dict[str, float]] = []
         self.monitoring = False
-        
-        # Hardware info
         self.hardware_info = self._get_hardware_info()
-    
     def _get_hardware_info(self) -> Dict[str, Any]:
-        """Get system hardware information."""
         info = {
             "cpu": psutil.cpu_count(),
             "ram_gb": psutil.virtual_memory().total / (1024**3),
             "platform": "linux",
         }
-        
         if TORCH_AVAILABLE and torch.cuda.is_available():
             info["gpu"] = torch.cuda.get_device_name(0)
             info["gpu_count"] = torch.cuda.device_count()
             props = torch.cuda.get_device_properties(0)
             info["vram_gb"] = props.total_memory / (1024**3)
             info["cuda_version"] = torch.version.cuda
-        
         return info
-    
     def load_model(self) -> float:
-        """Load the model and return load time."""
         if not MODEL_FACTORY_AVAILABLE:
             logger.warning("Model factory not available, using mock model")
             return 0.0
-        
         start_time = time.time()
-        
         try:
             self.model = ModelFactory.create_model(self.model_name)
             load_time = time.time() - start_time
@@ -175,9 +128,7 @@ class ModelBenchmark:
         except Exception as e:
             logger.error(f"Failed to load model {self.model_name}: {e}")
             raise
-    
     def unload_model(self) -> None:
-        """Unload the model and free resources."""
         if self.model:
             try:
                 if hasattr(self.model, 'cleanup'):
@@ -186,23 +137,16 @@ class ModelBenchmark:
                 logger.warning(f"Error during model cleanup: {e}")
             finally:
                 self.model = None
-                
-                # Clear GPU cache
                 if TORCH_AVAILABLE and torch.cuda.is_available():
                     torch.cuda.empty_cache()
-    
     def warmup(self, config: BenchmarkConfig) -> float:
-        """Perform warmup runs."""
         if not self.model:
             return 0.0
-        
         logger.info(f"Running {config.warmup_runs} warmup iterations...")
         warmup_time = 0.0
-        
         for i in range(config.warmup_runs):
             start_time = time.time()
             try:
-                # Simple generation for warmup
                 with self.model as model:
                     _ = model.generate_from_text(
                         prompt="a simple cube",
@@ -211,24 +155,18 @@ class ModelBenchmark:
                 warmup_time += time.time() - start_time
             except Exception as e:
                 logger.warning(f"Warmup run {i+1} failed: {e}")
-        
         return warmup_time
-    
     def _monitor_resources(self) -> Dict[str, float]:
-        """Monitor system resources."""
         metrics = {
             "timestamp": time.time(),
             "ram_gb": psutil.virtual_memory().used / (1024**3),
             "ram_percent": psutil.virtual_memory().percent,
             "cpu_percent": psutil.cpu_percent(interval=0.1),
         }
-        
         if TORCH_AVAILABLE and torch.cuda.is_available():
             try:
                 metrics["vram_gb"] = torch.cuda.memory_allocated() / (1024**3)
                 metrics["vram_reserved_gb"] = torch.cuda.memory_reserved() / (1024**3)
-                
-                # Try to get GPU stats via nvidia-smi
                 import subprocess
                 result = subprocess.run(
                     ["nvidia-smi", "--query-gpu=temperature.gpu,utilization.gpu", 
@@ -242,37 +180,23 @@ class ModelBenchmark:
                     metrics["gpu_utilization"] = float(util)
             except Exception as e:
                 logger.debug(f"Could not get GPU metrics: {e}")
-        
         return metrics
-    
     def run_single_benchmark(self, config: BenchmarkConfig) -> BenchmarkResult:
-        """Run a single benchmark test."""
         result = BenchmarkResult(
             config=config,
             success=False,
             generation_time_seconds=0.0,
             hardware_info=self.hardware_info,
         )
-        
-        # Start monitoring
         self.monitor_data.clear()
-        
         try:
-            # Load model if needed
             if not self.model:
                 result.model_load_time_seconds = self.load_model()
-            
-            # Warmup
             if config.warmup_runs > 0:
                 result.warmup_time_seconds = self.warmup(config)
-            
-            # Monitor before generation
             before_metrics = self._monitor_resources()
-            
-            # Main generation
             logger.info(f"Running benchmark: {config.model_name} - {config.prompt[:50]}...")
             start_time = time.time()
-            
             with self.model as model:
                 generation_result = model.generate_from_text(
                     prompt=config.prompt,
@@ -280,99 +204,65 @@ class ModelBenchmark:
                     guidance_scale=config.guidance_scale,
                     seed=config.seed,
                 )
-            
             generation_time = time.time() - start_time
             result.generation_time_seconds = generation_time
             result.success = True
-            
-            # Save output if requested
             if config.save_outputs and config.output_dir:
                 output_path = config.output_dir / f"{config.get_hash()}.{config.output_format}"
                 if hasattr(generation_result, 'save'):
                     generation_result.save(output_path)
                     result.output_path = str(output_path)
-                    
-                    # Get output metrics
                     if output_path.exists():
                         result.output_size_mb = output_path.stat().st_size / (1024**2)
-            
-            # Extract mesh metrics if available
             if hasattr(generation_result, 'vertices'):
                 result.vertex_count = len(generation_result.vertices)
             if hasattr(generation_result, 'faces'):
                 result.face_count = len(generation_result.faces)
-            
-            # Monitor after generation
             after_metrics = self._monitor_resources()
-            
-            # Calculate resource usage
             if before_metrics and after_metrics:
                 result.peak_vram_gb = after_metrics.get("vram_gb", 0)
                 result.peak_ram_gb = after_metrics.get("ram_gb", 0)
                 result.peak_gpu_temp_c = after_metrics.get("gpu_temp_c", 0)
                 result.peak_gpu_utilization = after_metrics.get("gpu_utilization", 0)
-            
             logger.info(f"Benchmark completed in {generation_time:.2f}s")
-            
         except Exception as e:
             result.success = False
             result.error_message = str(e)
             result.error_type = type(e).__name__
             logger.error(f"Benchmark failed: {e}")
-        
         return result
-    
     def run_benchmark_suite(
         self,
         configs: List[BenchmarkConfig],
         save_results: bool = True,
     ) -> List[BenchmarkResult]:
-        """Run a suite of benchmarks."""
         results = []
-        
         for i, config in enumerate(configs, 1):
             logger.info(f"Running benchmark {i}/{len(configs)}")
-            
-            # Run multiple times and average
             run_results = []
             for run in range(config.test_runs):
                 logger.info(f"  Run {run+1}/{config.test_runs}")
                 result = self.run_single_benchmark(config)
                 run_results.append(result)
-                
-                # Clear cache between runs
                 if TORCH_AVAILABLE and torch.cuda.is_available():
                     torch.cuda.empty_cache()
-                time.sleep(2)  # Brief pause between runs
-            
-            # Average the results
+                time.sleep(2)
             if run_results:
                 avg_result = self._average_results(run_results)
                 results.append(avg_result)
-        
-        # Save results
         if save_results:
             self._save_results(results)
-        
-        # Cleanup
         self.unload_model()
-        
         return results
-    
     def _average_results(self, results: List[BenchmarkResult]) -> BenchmarkResult:
-        """Average multiple benchmark results."""
         if not results:
             return None
-        
-        # Use first result as template
         avg_result = BenchmarkResult(
             config=results[0].config,
             success=all(r.success for r in results),
             generation_time_seconds=0.0,
             hardware_info=results[0].hardware_info,
         )
-        
-        # Average numeric metrics
         successful_results = [r for r in results if r.success]
         if successful_results:
             n = len(successful_results)
@@ -385,22 +275,16 @@ class ModelBenchmark:
             avg_result.avg_ram_gb = sum(r.avg_ram_gb for r in successful_results) / n
             avg_result.peak_gpu_temp_c = max(r.peak_gpu_temp_c for r in successful_results)
             avg_result.avg_gpu_temp_c = sum(r.avg_gpu_temp_c for r in successful_results) / n
-        
-        # Use last successful result's output info
         if successful_results:
             last_result = successful_results[-1]
             avg_result.output_path = last_result.output_path
             avg_result.output_size_mb = last_result.output_size_mb
             avg_result.vertex_count = last_result.vertex_count
             avg_result.face_count = last_result.face_count
-        
         return avg_result
-    
     def _save_results(self, results: List[BenchmarkResult]) -> None:
-        """Save benchmark results to file."""
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         results_file = self.output_dir / f"benchmark_results_{timestamp}.json"
-        
         try:
             with results_file.open("w") as f:
                 json.dump(

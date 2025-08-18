@@ -1,82 +1,57 @@
-"""
-Model Selection and Configuration UI for Multi-Model 3D Generation.
-
-This module provides a Gradio-based interface for selecting and configuring
-different 3D generation models with hardware-aware recommendations.
-"""
-
 import json
 import time
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Any
 from dataclasses import dataclass
 import numpy as np
-
 try:
     import gradio as gr
     GRADIO_AVAILABLE = True
 except ImportError:
     GRADIO_AVAILABLE = False
     gr = None
-
 try:
     import torch
     TORCH_AVAILABLE = True
 except ImportError:
     TORCH_AVAILABLE = False
     torch = None
-
 try:
     import psutil
     PSUTIL_AVAILABLE = True
 except ImportError:
     PSUTIL_AVAILABLE = False
     psutil = None
-
 from ..models.factory import ModelFactory
 from ..models.registry import ModelRegistry
 from ..models.base import ModelConfig
-
-
 @dataclass
 class PresetConfig:
-    """Preset configuration for quick model setup."""
     name: str
     description: str
     model: str
     quality_mode: str
     extra_params: Dict[str, Any]
-
-
 class HardwareMonitor:
-    """Monitor system hardware resources."""
-    
     def __init__(self):
-        """Initialize hardware monitor."""
         self.has_gpu = TORCH_AVAILABLE and torch.cuda.is_available()
         self.gpu_name = self._get_gpu_name()
         self.total_vram = self._get_total_vram()
-    
     def _get_gpu_name(self) -> str:
-        """Get GPU name."""
         if self.has_gpu:
             try:
                 return torch.cuda.get_device_name(0)
             except:
                 return "Unknown GPU"
         return "No GPU Available"
-    
     def _get_total_vram(self) -> float:
-        """Get total VRAM in GB."""
         if self.has_gpu:
             try:
                 return torch.cuda.get_device_properties(0).total_memory / (1024**3)
             except:
                 return 0.0
         return 0.0
-    
     def get_available_vram(self) -> float:
-        """Get available VRAM in GB."""
         if self.has_gpu:
             try:
                 used = torch.cuda.memory_allocated(0) / (1024**3)
@@ -84,9 +59,7 @@ class HardwareMonitor:
             except:
                 return 0.0
         return 0.0
-    
     def get_system_ram(self) -> Tuple[float, float]:
-        """Get system RAM (used, total) in GB."""
         if PSUTIL_AVAILABLE:
             try:
                 mem = psutil.virtual_memory()
@@ -94,11 +67,8 @@ class HardwareMonitor:
             except:
                 pass
         return 0.0, 0.0
-    
     def get_hardware_info(self) -> Dict[str, Any]:
-        """Get comprehensive hardware information."""
         used_ram, total_ram = self.get_system_ram()
-        
         return {
             "gpu_available": self.has_gpu,
             "gpu_name": self.gpu_name,
@@ -109,12 +79,7 @@ class HardwareMonitor:
             "cpu_count": psutil.cpu_count() if PSUTIL_AVAILABLE else 0,
             "cpu_percent": psutil.cpu_percent() if PSUTIL_AVAILABLE else 0
         }
-
-
 class ModelSelectionUI:
-    """UI for model selection and configuration."""
-    
-    # Preset configurations
     PRESETS = [
         PresetConfig(
             name="⚡ Ultra Fast",
@@ -152,21 +117,14 @@ class ModelSelectionUI:
             extra_params={"representation": "gaussian_splatting"}
         )
     ]
-    
     def __init__(self, registry: Optional[ModelRegistry] = None):
-        """Initialize the UI."""
         self.registry = registry or ModelRegistry()
         self.hardware_monitor = HardwareMonitor()
         self.factory = ModelFactory
         self.factory.set_registry(self.registry)
-        
-        # Current configuration
         self.current_config = None
         self.current_model = None
-        
-        # Configuration history
         self.config_history = []
-        # Use temp directory if home is not writable
         try:
             config_dir = Path.home() / ".dream_cad"
             config_dir.mkdir(parents=True, exist_ok=True)
@@ -174,12 +132,8 @@ class ModelSelectionUI:
         except (OSError, PermissionError):
             import tempfile
             self.config_save_path = Path(tempfile.gettempdir()) / "dream_cad_configs.json"
-        
-        # Load saved configurations
         self.load_saved_configs()
-    
     def load_saved_configs(self) -> None:
-        """Load saved configurations from disk."""
         if self.config_save_path.exists():
             try:
                 with open(self.config_save_path, "r") as f:
@@ -188,31 +142,24 @@ class ModelSelectionUI:
                 self.saved_configs = {}
         else:
             self.saved_configs = {}
-    
     def save_config(self, name: str, config: Dict) -> str:
-        """Save a configuration."""
         self.saved_configs[name] = {
             "config": config,
             "timestamp": time.time(),
             "hardware": self.hardware_monitor.get_hardware_info()
         }
-        
         try:
             with open(self.config_save_path, "w") as f:
                 json.dump(self.saved_configs, f, indent=2)
             return f"✅ Configuration '{name}' saved successfully"
         except Exception as e:
             return f"❌ Failed to save configuration: {str(e)}"
-    
     def get_model_recommendations(self) -> List[Tuple[str, str, float]]:
-        """Get model recommendations based on available hardware."""
         available_vram = self.hardware_monitor.get_available_vram()
         recommendations = []
-        
         for model_name in self.registry.list_models():
             caps = self.registry.get_capabilities(model_name)
             if caps:
-                # Calculate compatibility score
                 if available_vram >= caps.recommended_vram_gb:
                     score = 1.0
                     status = "✅ Recommended"
@@ -222,17 +169,11 @@ class ModelSelectionUI:
                 else:
                     score = 0.3
                     status = "❌ Not Recommended"
-                
                 recommendations.append((model_name, status, score))
-        
-        # Sort by score
         recommendations.sort(key=lambda x: x[2], reverse=True)
         return recommendations
-    
     def format_hardware_info(self) -> str:
-        """Format hardware information for display."""
         info = self.hardware_monitor.get_hardware_info()
-        
         lines = [
             "### 🖥️ System Hardware",
             f"**GPU:** {info['gpu_name']}",
@@ -240,15 +181,11 @@ class ModelSelectionUI:
             f"**RAM:** {info['used_ram_gb']:.1f} / {info['total_ram_gb']:.1f} GB used",
             f"**CPU:** {info['cpu_count']} cores ({info['cpu_percent']:.1f}% usage)"
         ]
-        
         return "\n".join(lines)
-    
     def format_model_capabilities(self, model_name: str) -> str:
-        """Format model capabilities for display."""
         caps = self.registry.get_capabilities(model_name)
         if not caps:
             return "No information available"
-        
         lines = [
             f"### 📊 {caps.name} Capabilities",
             f"**Min VRAM:** {caps.min_vram_gb} GB",
@@ -265,23 +202,16 @@ class ModelSelectionUI:
             "**Estimated Times:**",
             *[f"  • {k}: {v:.1f}s" for k, v in caps.estimated_time_seconds.items()]
         ]
-        
         return "\n".join(lines)
-    
     def get_model_comparison_table(self) -> str:
-        """Generate model comparison table."""
         models = self.registry.list_models()
         if not models:
             return "No models available for comparison"
-        
-        # Build comparison data
         headers = ["Model", "Min VRAM", "Speed", "Quality", "Formats", "Special Features"]
         rows = []
-        
         for model_name in models:
             caps = self.registry.get_capabilities(model_name)
             if caps:
-                # Estimate speed (inverse of average time)
                 avg_time = np.mean(list(caps.estimated_time_seconds.values()))
                 if avg_time < 5:
                     speed = "⚡⚡⚡"
@@ -289,8 +219,6 @@ class ModelSelectionUI:
                     speed = "⚡⚡"
                 else:
                     speed = "⚡"
-                
-                # Estimate quality based on model
                 quality_map = {
                     "triposr": "⭐⭐",
                     "stable-fast-3d": "⭐⭐⭐",
@@ -299,11 +227,7 @@ class ModelSelectionUI:
                     "mvdream": "⭐⭐⭐⭐"
                 }
                 quality = quality_map.get(model_name, "⭐⭐⭐")
-                
-                # Formats
                 formats = ", ".join([f.value.upper() for f in caps.output_formats[:3]])
-                
-                # Special features
                 features = []
                 if "hunyuan" in model_name:
                     features.append("PBR Materials")
@@ -313,7 +237,6 @@ class ModelSelectionUI:
                     features.append("Ultra Fast")
                 if "stable-fast" in model_name:
                     features.append("Game Optimized")
-                
                 rows.append([
                     caps.name,
                     f"{caps.min_vram_gb}GB",
@@ -322,43 +245,27 @@ class ModelSelectionUI:
                     formats,
                     ", ".join(features)
                 ])
-        
-        # Format as markdown table
         table_lines = [
             "| " + " | ".join(headers) + " |",
             "|" + "|".join(["---"] * len(headers)) + "|"
         ]
-        
         for row in rows:
             table_lines.append("| " + " | ".join(row) + " |")
-        
         return "\n".join(table_lines)
-    
     def update_model_info(self, model_name: str) -> Tuple[str, Dict, str]:
-        """Update model information displays."""
         if not model_name:
             return "", {}, ""
-        
-        # Get capabilities
         caps_text = self.format_model_capabilities(model_name)
-        
-        # Get recommendation
         recommendations = self.get_model_recommendations()
         rec_status = "Unknown"
         for name, status, _ in recommendations:
             if name == model_name:
                 rec_status = status
                 break
-        
-        # Get model-specific parameters
         params = self.get_model_specific_params(model_name)
-        
         return caps_text, params, rec_status
-    
     def get_model_specific_params(self, model_name: str) -> Dict:
-        """Get model-specific parameter controls."""
         params = {}
-        
         if model_name == "triposr":
             params = {
                 "resolution": 512,
@@ -398,30 +305,17 @@ class ModelSelectionUI:
                 "elevation_deg": 0,
                 "camera_distance": 1.2
             }
-        
         return params
-    
     def apply_preset(self, preset_name: str) -> Tuple[str, Dict, str]:
-        """Apply a preset configuration."""
         for preset in self.PRESETS:
             if preset.name == preset_name:
-                # Update model selection
                 model_name = preset.model
-                
-                # Get base params
                 params = self.get_model_specific_params(model_name)
-                
-                # Override with preset params
                 params.update(preset.extra_params)
                 params["quality_mode"] = preset.quality_mode
-                
-                # Get model info
                 caps_text, _, rec_status = self.update_model_info(model_name)
-                
                 return model_name, params, f"Applied preset: {preset.description}"
-        
         return "", {}, "Preset not found"
-    
     def generate_with_config(
         self,
         prompt: str,
@@ -429,107 +323,66 @@ class ModelSelectionUI:
         params: Dict,
         output_format: str
     ) -> Tuple[Any, str]:
-        """Generate 3D model with given configuration."""
-        # Validate inputs
         if not prompt or not prompt.strip():
             return None, "❌ Please provide a valid prompt"
-        
         if not model_name:
             return None, "❌ Please select a model"
-        
         try:
-            # Create model config
             config = ModelConfig(
                 model_name=model_name,
                 output_dir=Path("outputs") / model_name,
                 extra_params=params
             )
-            
-            # Create model
             model = self.factory.create_model(model_name, config)
-            
-            # Initialize if needed
             if not model._initialized:
                 model.initialize()
-            
-            # Generate based on type
             if prompt.startswith("image:"):
-                # Image path provided
                 image_path = prompt[6:].strip()
                 from PIL import Image
                 image = Image.open(image_path)
                 result = model.generate_from_image(image)
             else:
-                # Text prompt
                 result = model.generate_from_text(prompt)
-            
             if result.success:
                 return result.output_path, f"✅ Generated successfully in {result.generation_time:.1f}s"
             else:
                 return None, f"❌ Generation failed: {result.error_message}"
-                
         except Exception as e:
             return None, f"❌ Error: {str(e)}"
-    
     def create_interface(self) -> gr.Blocks:
-        """Create the Gradio interface."""
         if not GRADIO_AVAILABLE:
             raise ImportError("Gradio is required for the UI")
-        
-        # Use default theme for compatibility
         with gr.Blocks(title="Multi-Model 3D Generation") as interface:
             gr.Markdown("# 🎨 Multi-Model 3D Generation System")
             gr.Markdown("Select and configure different 3D generation models with hardware-aware recommendations.")
-            
             with gr.Tabs():
-                # Main Generation Tab
                 with gr.Tab("🚀 Generate"):
                     with gr.Row():
-                        # Left column - Model Selection
                         with gr.Column(scale=1):
                             gr.Markdown("### Model Selection")
-                            
-                            # Hardware info
                             hardware_info = gr.Markdown(self.format_hardware_info())
-                            
-                            # Model dropdown
                             model_choices = self.registry.list_models()
                             model_dropdown = gr.Dropdown(
                                 choices=model_choices,
                                 label="Select Model",
                                 value=model_choices[0] if model_choices else None
                             )
-                            
-                            # Recommendation status
                             rec_status = gr.Markdown("Select a model to see recommendation")
-                            
-                            # Preset buttons
                             gr.Markdown("### Quick Presets")
                             preset_buttons = []
                             for preset in self.PRESETS:
                                 btn = gr.Button(preset.name, variant="secondary")
                                 preset_buttons.append(btn)
-                            
-                            # Refresh hardware button
                             refresh_hw_btn = gr.Button("🔄 Refresh Hardware", variant="secondary")
-                        
-                        # Middle column - Configuration
                         with gr.Column(scale=2):
                             gr.Markdown("### Model Configuration")
-                            
-                            # Model capabilities
                             model_caps = gr.Markdown("Select a model to see capabilities")
-                            
-                            # Dynamic parameters (would be created based on model)
                             with gr.Accordion("Parameters", open=True):
-                                # Quality mode
                                 quality_mode = gr.Radio(
                                     choices=["fast", "balanced", "production", "hq"],
                                     label="Quality Mode",
                                     value="balanced"
                                 )
-                                
-                                # Resolution
                                 resolution = gr.Slider(
                                     minimum=128,
                                     maximum=2048,
@@ -537,21 +390,15 @@ class ModelSelectionUI:
                                     label="Resolution",
                                     value=512
                                 )
-                                
-                                # Additional params as JSON
                                 extra_params = gr.JSON(
                                     label="Additional Parameters",
                                     value={}
                                 )
-                            
-                            # Output format
                             output_format = gr.Dropdown(
                                 choices=["obj", "ply", "glb", "stl"],
                                 label="Output Format",
                                 value="obj"
                             )
-                            
-                            # Save/Load config
                             with gr.Row():
                                 config_name = gr.Textbox(
                                     label="Configuration Name",
@@ -562,8 +409,6 @@ class ModelSelectionUI:
                                     choices=list(self.saved_configs.keys()),
                                     label="Load Config"
                                 )
-                    
-                    # Generation inputs
                     with gr.Row():
                         prompt_input = gr.Textbox(
                             label="Prompt",
@@ -571,18 +416,12 @@ class ModelSelectionUI:
                             lines=2
                         )
                         generate_btn = gr.Button("🎨 Generate 3D Model", variant="primary")
-                    
-                    # Output
                     with gr.Row():
                         output_model = gr.Model3D(label="Generated Model")
                         output_status = gr.Markdown("Ready to generate")
-                
-                # Model Comparison Tab
                 with gr.Tab("📊 Compare Models"):
                     gr.Markdown("### Model Comparison Matrix")
                     comparison_table = gr.Markdown(self.get_model_comparison_table())
-                    
-                    # Detailed recommendations
                     gr.Markdown("### 🎯 Hardware-Based Recommendations")
                     with gr.Row():
                         for model_name, status, score in self.get_model_recommendations()[:5]:
@@ -590,8 +429,6 @@ class ModelSelectionUI:
                                 gr.Markdown(f"**{model_name}**")
                                 gr.Markdown(f"{status}")
                                 gr.Progress(value=score, label="Compatibility")
-                
-                # Configuration History Tab
                 with gr.Tab("📜 History"):
                     gr.Markdown("### Configuration History")
                     history_table = gr.Dataframe(
@@ -599,153 +436,24 @@ class ModelSelectionUI:
                         value=[],
                         interactive=False
                     )
-                    
                     clear_history_btn = gr.Button("🗑️ Clear History", variant="secondary")
-                
-                # Documentation Tab
                 with gr.Tab("📚 Documentation"):
                     gr.Markdown("""
-                    ### Usage Guide
-                    
                     1. **Check Hardware**: Review your system capabilities in the hardware info panel
                     2. **Select Model**: Choose a model based on recommendations
                     3. **Configure**: Adjust parameters or use a preset
                     4. **Generate**: Enter a prompt and click Generate
-                    
-                    ### Model Guidelines
-                    
                     - **TripoSR**: Ultra-fast, good for prototyping
                     - **Stable-Fast-3D**: Game-optimized with PBR materials
                     - **Hunyuan3D-Mini**: Production quality, requires license for commercial use
                     - **TRELLIS**: Highest quality, supports NeRF and Gaussian Splatting
                     - **MVDream**: Original high-quality model
-                    
-                    ### Tips
-                    
                     - Start with presets for optimal configurations
                     - Monitor VRAM usage to avoid out-of-memory errors
                     - Save successful configurations for reuse
                     - Use lower resolutions for faster iteration
-                    """)
-            
-            # Event handlers
-            def update_model_selection(model_name):
-                caps_text, params, status = self.update_model_info(model_name)
-                return caps_text, params, status
-            
-            def refresh_hardware():
-                return self.format_hardware_info()
-            
-            def save_configuration(name, model, params):
-                if not name:
-                    return "Please provide a configuration name"
-                
-                config = {
-                    "model": model,
-                    "parameters": params
-                }
-                return self.save_config(name, config)
-            
-            def load_configuration(config_name):
-                if config_name in self.saved_configs:
-                    config = self.saved_configs[config_name]["config"]
-                    return config["model"], config["parameters"]
-                return None, {}
-            
-            def generate_model(prompt, model, params, format):
-                if not prompt:
-                    return None, "Please provide a prompt"
-                if not model:
-                    return None, "Please select a model"
-                
-                # Add format to params
-                params["output_format"] = format
-                
-                # Generate
-                output, status = self.generate_with_config(prompt, model, params, format)
-                
-                # Add to history
-                self.config_history.append({
-                    "timestamp": time.time(),
-                    "model": model,
-                    "config": params,
-                    "status": "success" if output else "failed"
-                })
-                
-                return output, status
-            
-            # Connect events
-            model_dropdown.change(
-                update_model_selection,
-                inputs=[model_dropdown],
-                outputs=[model_caps, extra_params, rec_status]
-            )
-            
-            refresh_hw_btn.click(
-                refresh_hardware,
-                outputs=[hardware_info]
-            )
-            
-            save_config_btn.click(
-                save_configuration,
-                inputs=[config_name, model_dropdown, extra_params],
-                outputs=[output_status]
-            )
-            
-            load_config_dropdown.change(
-                load_configuration,
-                inputs=[load_config_dropdown],
-                outputs=[model_dropdown, extra_params]
-            )
-            
-            generate_btn.click(
-                generate_model,
-                inputs=[prompt_input, model_dropdown, extra_params, output_format],
-                outputs=[output_model, output_status]
-            )
-            
-            # Connect preset buttons
-            for i, btn in enumerate(preset_buttons):
-                preset = self.PRESETS[i]
-                btn.click(
-                    lambda p=preset.name: self.apply_preset(p),
-                    outputs=[model_dropdown, extra_params, output_status]
-                )
-        
-        return interface
-
-
-def launch_ui(
-    host: str = "127.0.0.1",
-    port: int = 7860,
-    share: bool = False,
-    registry: Optional[ModelRegistry] = None
-) -> None:
-    """Launch the model selection UI.
-    
     Args:
         host: Host to bind to
         port: Port to bind to
         share: Whether to create a public share link
         registry: Model registry to use
-    """
-    if not GRADIO_AVAILABLE:
-        raise ImportError("Gradio is required to launch the UI. Install with: pip install gradio")
-    
-    ui = ModelSelectionUI(registry)
-    interface = ui.create_interface()
-    
-    print(f"🚀 Launching Multi-Model 3D Generation UI...")
-    print(f"📍 Local URL: http://{host}:{port}")
-    
-    interface.launch(
-        server_name=host,
-        server_port=port,
-        share=share,
-        show_error=True
-    )
-
-
-if __name__ == "__main__":
-    # Test launch
-    launch_ui()

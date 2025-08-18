@@ -62,35 +62,18 @@ class DreamCADCLI(App):
     Screen {
         background: $surface;
     }
-        height: 5;
-        padding: 1;
-        background: $primary-lighten-2;
+    #sidebar {
+        width: 25;
+        height: 100%;
+        dock: left;
+        background: $panel;
     }
-        width: 100%;
-        padding: 1;
+    #main {
+        background: $surface;
+    }
+    #output {
+        height: 100%;
         border: solid $primary;
-    }
-        padding: 1;
-        height: 7;
-    }
-        height: 5;
-        padding: 1;
-    }
-        height: 4;
-        padding: 0 1;
-    }
-    RichLog {
-        border: solid $secondary;
-        padding: 1;
-    }
-    ProgressBar {
-        width: 100%;
-    }
-    Button {
-        margin: 0 1;
-    }
-    .hidden {
-        display: none;
     }
         self.update_model_info()
         self.log_message("✨ Welcome to DreamCAD Production CLI!")

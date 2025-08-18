@@ -1,10 +1,6 @@
-#!/usr/bin/env python3
-"""Test TUI keyboard functionality."""
-
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
-
 try:
     from textual.pilot import Pilot
     from textual.app import App
@@ -13,77 +9,42 @@ try:
 except ImportError:
     TEXTUAL_AVAILABLE = False
     print("Warning: Textual not available, skipping TUI tests")
-
-
 def test_tui_keyboard():
-    """Test TUI keyboard shortcuts."""
     if not TEXTUAL_AVAILABLE:
         print("Skipping TUI tests - Textual not installed")
         return
-    
     try:
         import dreamcad_simple_tui
-        
         async def run_test():
-            """Run async test."""
             app = dreamcad_simple_tui.DreamCADApp()
-            
             async with app.run_test() as pilot:
-                # Test initial state
                 assert app.current_view == "main"
-                
-                # Test 'g' key for generate
                 await pilot.press("g")
                 await pilot.pause(0.1)
-                # Check if view changed or notification appeared
-                
-                # Test 'm' key for models
                 await pilot.press("m")
                 await pilot.pause(0.1)
-                # Check if models view is shown
-                
-                # Test 'h' for help
                 await pilot.press("h")
                 await pilot.pause(0.1)
-                # Check for help notification
-                
-                # Test 'q' to quit
                 await pilot.press("q")
-                # App should exit
-                
                 print("✓ All keyboard shortcuts tested")
-        
-        # Run the async test
         asyncio.run(run_test())
-        
     except Exception as e:
         print(f"TUI test error: {e}")
         import traceback
         traceback.print_exc()
-
-
 def test_tui_structure():
-    """Test TUI structure without running it."""
     try:
         import dreamcad_simple_tui
-        
         app_class = dreamcad_simple_tui.DreamCADApp
-        
-        # Check bindings
         bindings = app_class.BINDINGS
         binding_keys = [b.key for b in bindings]
-        
         assert "q" in binding_keys, "Missing 'q' binding"
         assert "g" in binding_keys, "Missing 'g' binding"
         assert "m" in binding_keys, "Missing 'm' binding"
         assert "h" in binding_keys, "Missing 'h' binding"
-        
-        # Check if quit has priority
         quit_binding = next((b for b in bindings if b.key == "q"), None)
         if quit_binding:
             assert quit_binding.priority, "Quit binding should have priority=True"
-        
-        # Check methods exist
         assert hasattr(app_class, 'action_quit'), "Missing action_quit"
         assert hasattr(app_class, 'action_generate'), "Missing action_generate"
         assert hasattr(app_class, 'action_models'), "Missing action_models"
@@ -91,23 +52,18 @@ def test_tui_structure():
         assert hasattr(app_class, 'on_button_pressed'), "Missing on_button_pressed"
         assert hasattr(app_class, 'on_key'), "Missing on_key handler"
         assert hasattr(app_class, 'on_mount'), "Missing on_mount"
-        
         print("✓ TUI structure test passed")
         print("  - All bindings present")
         print("  - Quit has priority")
         print("  - All action methods defined")
         print("  - Event handlers present")
-        
     except ImportError as e:
         print(f"Cannot import TUI: {e}")
     except AssertionError as e:
         print(f"✗ TUI structure test failed: {e}")
     except Exception as e:
         print(f"Unexpected error: {e}")
-
-
 def test_manual_instructions():
-    """Print manual test instructions."""
     print("\n=== MANUAL TUI TESTING INSTRUCTIONS ===")
     print("Run: ./dreamcad tui")
     print("\nTest these keyboard shortcuts:")
@@ -124,19 +80,11 @@ def test_manual_instructions():
     print("  - If keys don't work, check if any widget has focus")
     print("  - Try clicking background first, then pressing keys")
     print("  - Check terminal for any error messages")
-
-
 if __name__ == "__main__":
     print("TUI Keyboard Test Suite")
     print("=" * 50)
-    
-    # Test structure
     test_tui_structure()
-    
-    # Test keyboard if possible
     if TEXTUAL_AVAILABLE:
         print("\nTesting keyboard functionality...")
         test_tui_keyboard()
-    
-    # Print manual instructions
     test_manual_instructions()
