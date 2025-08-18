@@ -90,13 +90,46 @@ class GenerationWorker:
             
             await self._update_progress(job, 0.1, "Initializing...")
             
+            # Check if model is available
             if not self.app.is_model_available(job.model_name):
-                if self.app.is_demo_mode or self.app.config.config.models.fallback_to_mock:
-                    await self._generate_mock(job)
-                    return
+                # Try to download if auto_download is enabled
+                if self.app.config.config.models.auto_download:
+                    model_info = self.app.get_model_info(job.model_name)
+                    if model_info and model_info.get('vram_compatible', False):
+                        # Download the model
+                        job.status = JobStatus.DOWNLOADING
+                        await self._update_progress(job, 0.15, f"Downloading {job.model_name}...")
+                        
+                        success = await self._download_model(job)
+                        if success:
+                            # Model downloaded, proceed with generation
+                            await self._update_progress(job, 0.3, "Model downloaded, loading...")
+                        else:
+                            # Download failed, fall back to demo only as last resort
+                            if self.app.config.config.models.fallback_to_mock:
+                                await self._update_progress(job, 0.2, "Download failed, using demo mode...")
+                                await self._generate_mock(job)
+                                return
+                            else:
+                                raise Exception(f"Failed to download model {job.model_name}")
+                    else:
+                        # Model not compatible, use demo if enabled
+                        if self.app.config.config.models.fallback_to_mock:
+                            await self._update_progress(job, 0.2, "Model incompatible, using demo mode...")
+                            await self._generate_mock(job)
+                            return
+                        else:
+                            raise Exception(f"Model {job.model_name} not compatible with system")
                 else:
-                    raise Exception(f"Model {job.model_name} not available")
+                    # Auto-download disabled, use demo if enabled
+                    if self.app.config.config.models.fallback_to_mock:
+                        await self._update_progress(job, 0.2, "Model not available, using demo mode...")
+                        await self._generate_mock(job)
+                        return
+                    else:
+                        raise Exception(f"Model {job.model_name} not available and auto-download disabled")
             
+            # Model is available (or just downloaded), proceed with real generation
             model = await self._get_or_load_model(job)
             
             if self.cancel_flags.get(job.id):
@@ -282,6 +315,40 @@ class GenerationWorker:
         except ImportError:
             return False
             
+    async def _download_model(self, job: GenerationJob) -> bool:
+        """Download a model with progress tracking"""
+        try:
+            from ..core.model_detector import ModelDetector, KNOWN_MODELS
+            
+            detector = ModelDetector(self.app.config)
+            model_info = KNOWN_MODELS.get(job.model_name)
+            
+            if not model_info:
+                return False
+            
+            # Create progress callback
+            def download_progress(downloaded: float, total: float):
+                if total > 0:
+                    percent = downloaded / total
+                    job.progress = 0.15 + (percent * 0.15)  # Map to 15-30% of total progress
+                    size_mb = total / (1024 * 1024)
+                    downloaded_mb = downloaded / (1024 * 1024)
+                    job.progress_message = f"Downloading: {downloaded_mb:.1f}/{size_mb:.1f} MB ({percent:.0%})"
+                    asyncio.create_task(self._update_progress(job, job.progress, job.progress_message))
+            
+            # Download the model
+            success = await detector.download_model(job.model_name, progress_callback=download_progress)
+            
+            if success:
+                # Update available models in app
+                self.app.available_models = await detector.scan_models()
+                
+            return success
+            
+        except Exception as e:
+            self.app.logger.error(f"Download failed for {job.model_name}: {e}")
+            return False
+    
     async def _update_progress(self, job: GenerationJob, progress: float, message: str):
         job.progress = progress
         job.progress_message = message
