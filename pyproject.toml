@@ -62,6 +62,8 @@ PyMCubes = "^0.1.4"
 textual = "^5.3.0"
 typer = "^0.16.0"
 click = "^8.2.1"
+torch = {version = "^2.7.1", source = "pytorch-cu118"}
+torchvision = {version = "^0.22.1", source = "pytorch-cu118"}
 
 [[tool.poetry.source]]
 name = "pytorch-cu118"
@@ -82,6 +84,7 @@ furo = "^2024.8.6"
 sphinx-autoapi = "^3.5.0"
 sphinx-autodoc2 = "^0.5.0"
 doc-utils = "^0.0.2"
+pytest-asyncio = "^1.1.0"
 
 [build-system]
 requires = ["poetry-core"]

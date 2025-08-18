@@ -397,37 +397,99 @@ class DreamCADTUI(App):
                 from dream_cad.models.factory import ModelFactory
                 from dream_cad.models.registry import ModelRegistry
                 
-                # Try to get model from factory
-                registry = ModelRegistry()
-                model_name = self.current_model.lower().replace("-", "_")
+                # Import all models to trigger registration
+                try:
+                    from dream_cad.models.triposr import TripoSR
+                    from dream_cad.models.stable_fast_3d import StableFast3D
+                    from dream_cad.models.trellis import TRELLIS
+                    from dream_cad.models.hunyuan3d import Hunyuan3DMini
+                    from dream_cad.models.mvdream_adapter import MVDreamAdapter
+                except ImportError as e:
+                    self.log_output(f"[yellow]Warning: Some models couldn't be imported: {e}[/yellow]")
                 
-                if registry.has_model(model_name):
+                # Try to get model from factory
+                model_name = self.current_model.lower().replace("-", "_").replace(" ", "")
+                
+                # Map display names to registered names
+                model_name_map = {
+                    "triposr": "triposr",
+                    "stablefast3d": "stable-fast-3d",
+                    "trellis": "trellis",
+                    "hunyuan3d": "hunyuan3d-mini",
+                    "mvdream": "mvdream"
+                }
+                
+                actual_model_name = model_name_map.get(model_name, model_name)
+                available_models = ModelFactory.list_models()
+                
+                if actual_model_name in available_models:
                     self.log_output(f"[yellow]Loading {self.current_model} model...[/yellow]")
+                    self.log_output(f"[dim]First time use will download the model (1-5GB).[/dim]")
+                    self.log_output(f"[dim]This is a one-time download that will be cached.[/dim]")
                     
-                    # Get the model
-                    model = ModelFactory.create_model(model_name)
+                    # Run model operations in a thread to avoid blocking the UI
+                    import concurrent.futures
+                    import threading
                     
                     # Configure model
                     output_format = params.get("output_format", "obj")
                     
+                    # Filter out 'model' and 'output_format' keys from params 
+                    # (output_format is passed separately)
+                    generation_params = {k: v for k, v in params.items() 
+                                       if k not in ["model", "output_format"]}
+                    
+                    # Create a function to run in thread
+                    def run_generation():
+                        try:
+                            # Create progress callback that logs to TUI
+                            def progress_callback(message):
+                                # Schedule the log update in the main thread
+                                self.call_from_thread(self.log_output, f"[cyan]{message}[/cyan]")
+                            
+                            # Create model config with progress callback
+                            from dream_cad.models.base import ModelConfig
+                            config = ModelConfig(
+                                model_name=actual_model_name,
+                                progress_callback=progress_callback
+                            )
+                            
+                            # Get the model
+                            model = ModelFactory.create_model(actual_model_name, config=config)
+                            
+                            # Generate
+                            result = model.generate_from_text(
+                                prompt=prompt,
+                                output_format=output_format,
+                                **generation_params
+                            )
+                            
+                            # Cleanup
+                            model.cleanup()
+                            
+                            return result
+                        except Exception as e:
+                            return str(e)
+                    
+                    # Run in thread pool to avoid blocking
                     self.log_output("[yellow]Generating 3D model...[/yellow]")
+                    self.log_output("[dim]Please wait, this may take a moment...[/dim]")
                     
-                    # Generate
-                    result = model.generate_from_text(
-                        prompt=prompt,
-                        output_format=output_format,
-                        **params
-                    )
+                    # Use asyncio's run_in_executor to run blocking code
+                    loop = asyncio.get_event_loop()
+                    with concurrent.futures.ThreadPoolExecutor() as executor:
+                        result = await loop.run_in_executor(executor, run_generation)
                     
-                    if result and result.file_path:
-                        self.log_output(f"[green]✅ Success! Generated: {result.file_path}[/green]")
-                        if result.metadata:
-                            self.log_output(f"Generation time: {result.metadata.get('generation_time', 'N/A')}s")
+                    # Check result
+                    if isinstance(result, str):
+                        # It's an error message
+                        self.log_output(f"[red]❌ Error: {result}[/red]")
+                    elif result and result.output_path:
+                        self.log_output(f"[green]✅ Success! Generated: {result.output_path}[/green]")
+                        if result.generation_time:
+                            self.log_output(f"Generation time: {result.generation_time:.2f}s")
                     else:
-                        self.log_output("[yellow]⚠️ Generation completed but no file was created (mock mode)[/yellow]")
-                    
-                    # Cleanup
-                    model.cleanup()
+                        self.log_output("[yellow]⚠️ Generation completed but no file was created[/yellow]")
                 else:
                     # Fallback to simulation
                     await self.simulate_generation(prompt, params)
