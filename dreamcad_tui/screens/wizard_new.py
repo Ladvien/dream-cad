@@ -208,9 +208,12 @@ class WizardScreen(Screen):
         self.run_worker(self._run_generation)
         
     @work(thread=True)
-    async def _run_generation(self):
+    def _run_generation(self):
         if hasattr(self, 'current_job'):
-            await self.app.generation_worker.process_job(self.current_job)
+            import asyncio
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(self.app.generation_worker.process_job(self.current_job))
     
     def cancel_generation(self):
         if hasattr(self, 'current_job'):
