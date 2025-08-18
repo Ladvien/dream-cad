@@ -3,7 +3,8 @@ from textual.containers import Container, Horizontal, Vertical, Grid
 from textual.widgets import Static, Button, Label, ProgressBar, DataTable, Sparkline
 from textual.widget import Widget
 from textual.reactive import reactive
-from textual import work
+from textual.screen import Screen
+from textual import work, on
 from rich.text import Text
 from rich.panel import Panel
 from rich.table import Table
@@ -11,7 +12,13 @@ from rich.align import Align
 from datetime import datetime
 import asyncio
 import random
-from typing import List, Dict
+from typing import List, Dict, Optional
+import psutil
+try:
+    import torch
+    TORCH_AVAILABLE = torch.cuda.is_available()
+except ImportError:
+    TORCH_AVAILABLE = False
 class SystemMonitor(Widget):
     gpu_usage = reactive(0)
     vram_usage = reactive(0)

@@ -1,0 +1,61 @@
+Screen {
+    background: $surface;
+}
+
+#title {
+    height: 3;
+    content-align: center middle;
+    text-style: bold;
+    background: $primary;
+    color: $text;
+}
+
+#dashboard-grid {
+    layout: grid;
+    grid-size: 2;
+    grid-gutter: 1;
+    padding: 1;
+}
+
+.dashboard-widget {
+    height: 100%;
+    border: solid $primary;
+}
+
+#quick-actions {
+    dock: bottom;
+    height: 3;
+    padding: 0 1;
+}
+
+#wizard-container {
+    padding: 1;
+}
+
+.step-label {
+    text-style: bold;
+    color: $primary;
+    margin: 1 0;
+}
+
+.hint-label {
+    color: $text-muted;
+    margin: 0 0 1 0;
+}
+
+.suggestion-btn {
+    width: 100%;
+    margin: 0 0 1 0;
+}
+
+#generation-panel {
+    margin-top: 2;
+}
+
+#generation-progress {
+    margin: 1 0;
+}
+
+Button {
+    margin: 0 1;
+}
