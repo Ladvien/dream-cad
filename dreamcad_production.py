@@ -3,6 +3,11 @@
 import sys
 from pathlib import Path
 
+# CRITICAL: Force reload of ALL dreamcad_tui modules to avoid cache issues
+for key in list(sys.modules.keys()):
+    if 'dreamcad_tui' in key:
+        del sys.modules[key]
+
 sys.path.insert(0, str(Path(__file__).parent))
 
 from dreamcad_tui.core.app import DreamCADApp
@@ -26,6 +31,8 @@ def main():
         print("\n👋 Goodbye!")
     except Exception as e:
         print(f"\n❌ Error: {e}")
+        import traceback
+        traceback.print_exc()
         print("\nCheck logs at ~/.dreamcad/logs/")
         sys.exit(1)
 
